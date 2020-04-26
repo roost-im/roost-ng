@@ -1,0 +1,2 @@
+# A name for a management command to run stuff in a django context for manual testing.
+harness.py
