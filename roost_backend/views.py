@@ -2,6 +2,7 @@ import datetime
 
 from django.db import transaction
 from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.views.decorators.vary import vary_on_headers
 import gssapi
 from rest_framework.views import APIView
@@ -11,6 +12,7 @@ from rest_framework import generics, permissions, status
 from . import filters, models, serializers
 
 
+@method_decorator(never_cache, name='dispatch')
 class AuthView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -49,12 +51,14 @@ class AuthView(APIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class PingView(APIView):
     def get(self, request):
         return Response({'pong': 1})
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class InfoView(APIView):
     serializer_class = serializers.InfoSerializer
 
@@ -82,6 +86,7 @@ class InfoView(APIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class SubscriptionView(generics.ListAPIView):
     serializer_class = serializers.SubscriptionSerializer
 
@@ -90,6 +95,7 @@ class SubscriptionView(generics.ListAPIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class SubscribeView(APIView):
     serializer_class = serializers.SubscriptionSerializer
 
@@ -106,6 +112,7 @@ class SubscribeView(APIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class UnsubscribeView(APIView):
     serializer_class = serializers.SubscriptionSerializer
 
@@ -121,6 +128,7 @@ class UnsubscribeView(APIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class MessageView(generics.ListAPIView):
     serializer_class = serializers.MessageSerializer
 
@@ -160,6 +168,7 @@ class MessageView(generics.ListAPIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class MessageByTimeView(APIView):
     def get(self, request):
         time = request.query_params.get('time')
@@ -173,6 +182,7 @@ class MessageByTimeView(APIView):
 
 
 @method_decorator(vary_on_headers('Authorization'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class ZephyrCredsView(APIView):
     def get(self, request):
         # This should find out if we need to refresh the zephyr
