@@ -6,7 +6,7 @@ import multiprocessing as mp
 import os
 import signal
 
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 import channels.consumer
 import channels.layers
 import channels.utils
@@ -129,7 +129,7 @@ class Overseer(_ChannelLayerMixin):
             for principal in user_qs.values_list('principal', flat=True)
         }
         _LOGGER.debug('%s starting...', self)
-        asyncio.run(self.oversee())
+        async_to_sync(self.oversee)()
 
     async def oversee(self):
         channel_task = asyncio.create_task(self.channel_layer_handler())
@@ -140,7 +140,7 @@ class Overseer(_ChannelLayerMixin):
         # We could just wait for the async tasks to finish, but then
         # we would not be waiting on any tasks for users created after
         # start-up, once we handle dynamic user creation.
-        await sync_to_async(self.stop_event.wait)()
+        await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
         await asyncio.wait([task for task in self.user_tasks.values() if task is not None])
         channel_task.cancel()
 
@@ -148,7 +148,7 @@ class Overseer(_ChannelLayerMixin):
         while not self.stop_event.is_set():
             proc = mp.Process(target=UserProcess, args=(principal, self.stop_event))
             proc.start()
-            await sync_to_async(proc.join)()
+            await sync_to_async(proc.join, thread_sensitive=True)()
 
     # Start of Channel Layer message handlers
     async def add_user(self, message):
@@ -183,12 +183,12 @@ class UserProcess(_ChannelLayerMixin):
 
     def start(self):
         setproctitle.setproctitle(f'UP/{self.principal}')
-        asyncio.run(self.run())
+        async_to_sync(self.run)()
 
     async def run(self):
         channel_task = asyncio.create_task(self.channel_layer_handler())
         zephyr_task = asyncio.create_task(self.zephyr_handler())
-        await sync_to_async(self.stop_event.wait)()
+        await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
         channel_task.cancel()
         zephyr_task.cancel()
 
