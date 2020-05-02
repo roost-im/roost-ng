@@ -3,6 +3,7 @@ import uuid
 
 from django.conf import settings
 
+
 def _secret_generator(context, as_uuid=False):
     """Derive secrets from SECRET_KEY and a context string"""
     ret = uuid.uuid5(
