@@ -122,7 +122,7 @@ class Overseer(_ChannelLayerMixin):
     def start(self):
         if not settings.configured:
             django.setup()
-        setproctitle.setproctitle(f'roost:UPO/{self.pid}')
+        setproctitle.setproctitle(f'roost:OVERSEER')
         user_qs = django.apps.apps.get_model('roost_backend', 'User').objects.all()
         self.user_tasks = {
             principal: None
@@ -182,7 +182,7 @@ class UserProcess(_ChannelLayerMixin):
         return [f'PRINC_{b64_principal.strip("=")}']
 
     def start(self):
-        setproctitle.setproctitle(f'UP/{self.principal}')
+        setproctitle.setproctitle(f'roost:{self.principal}')
         async_to_sync(self.run)()
 
     async def run(self):
