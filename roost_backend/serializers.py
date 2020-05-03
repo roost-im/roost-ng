@@ -160,3 +160,17 @@ class MessageSerializer(serializers.ModelSerializer):
 # pylint: disable=no-member, protected-access
 MessageSerializer._declared_fields['class'] = serializers.CharField(source='zclass')
 # pylint: enable=no-member, protected-access
+
+
+class OutgoingMessageSerializer(serializers.Serializer):
+    instance = serializers.CharField()
+    recipient = serializers.CharField()
+    opcode = serializers.CharField(default='')
+    signature = serializers.CharField(default='')
+    message = serializers.CharField()
+
+
+# class is a reserved word, so let's do this the hard way.
+# pylint: disable=no-member, protected-access
+OutgoingMessageSerializer._declared_fields['class'] = serializers.CharField()
+# pylint: enable=no-member, protected-access

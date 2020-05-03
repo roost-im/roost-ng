@@ -194,6 +194,20 @@ class ZephyrCredsView(APIView):
         })
 
 
+@method_decorator(COMMON_DECORATORS, name='dispatch')
+class ZWriteView(APIView):
+    serializer_class = serializers.OutgoingMessageSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        request.user.send_to_user_process({
+            'type': 'zwrite',
+            'message': serializer.validated_data,
+        })
+        return Response()
+
+
 # Roost's endpoints:
 # Done:
 # app.post('/v1/auth
@@ -205,11 +219,11 @@ class ZephyrCredsView(APIView):
 # app.post('/v1/unsubscribe', requireUser
 # app.get('/v1/messages', requireUser
 # app.get('/v1/bytime', requireUser
+# app.post('/v1/zwrite', requireUser
 # Stubbed:
 # app.get('/v1/zephyrcreds', requireUser
 # app.post('/v1/zephyrcreds', requireUser
 # To do:
-# app.post('/v1/zwrite', requireUser
 
 # Also, a websocket at /v1/socket/websocket
 # message types:

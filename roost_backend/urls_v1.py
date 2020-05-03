@@ -13,4 +13,5 @@ urlpatterns = [
     path('messages', views.MessageView.as_view()),
     path('bytime', views.MessageByTimeView.as_view()),
     path('zephyrcreds', views.ZephyrCredsView.as_view()),
+    path('zwrite', views.ZWriteView.as_view()),
 ]
