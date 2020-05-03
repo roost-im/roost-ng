@@ -145,6 +145,7 @@ class MessageSerializer(serializers.ModelSerializer):
     time = DateTimeAsMillisecondsField()
     receive_time = DateTimeAsMillisecondsField()
     message = serializers.SerializerMethodField()
+    instance = serializers.CharField(source='zinstance')
 
     @staticmethod
     def get_message(obj):
@@ -152,4 +153,10 @@ class MessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Message
-        exclude = ['users']
+        exclude = ['users', 'zclass', 'zinstance']
+
+
+# class is a reserved word, so let's do this the hard way.
+# pylint: disable=no-member, protected-access
+MessageSerializer._declared_fields['class'] = serializers.CharField(source='zclass')
+# pylint: enable=no-member, protected-access
