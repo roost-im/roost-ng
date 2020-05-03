@@ -1,10 +1,12 @@
 import datetime
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db import models, transaction
 import jwt
 
-from . import secrets
+from . import secrets, utils
 
 
 class User(models.Model):
@@ -77,6 +79,11 @@ class User(models.Model):
     @property
     def is_anonymous(self):
         return self.id is None
+
+    def send_to_user_process(self, msg):
+        channel_layer = get_channel_layer()
+        group_name = utils.principal_to_group_name(self.principal)
+        async_to_sync(channel_layer.group_send)(group_name, msg)
 
     class Meta:
         pass

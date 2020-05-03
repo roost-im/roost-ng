@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import functools
 import logging
 import multiprocessing as mp
@@ -14,6 +13,8 @@ import django
 import django.apps
 from django.conf import settings
 import setproctitle
+
+from . import utils
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -178,8 +179,7 @@ class UserProcess(_ChannelLayerMixin):
 
     @property
     def group_names(self):
-        b64_principal = base64.b64encode(self.principal.encode("utf-8")).decode("ascii")
-        return [f'PRINC_{b64_principal.strip("=")}']
+        return [utils.principal_to_group_name(self.principal)]
 
     def start(self):
         setproctitle.setproctitle(f'roost:{self.principal}')
