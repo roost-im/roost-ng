@@ -80,10 +80,16 @@ class User(models.Model):
     def is_anonymous(self):
         return self.id is None
 
-    def send_to_user_process(self, msg):
+    def send_to_user_process(self, msg, wait_for_response=False):
         channel_layer = get_channel_layer()
+        if wait_for_response:
+            channel_name = async_to_sync(channel_layer.new_channel)()
+            msg = dict(msg, _reply_to=channel_name)
         group_name = utils.principal_to_group_name(self.principal)
         async_to_sync(channel_layer.group_send)(group_name, msg)
+        if wait_for_response:
+            return async_to_sync(channel_layer.receive)(channel_name)
+        return None
 
     class Meta:
         pass

@@ -201,11 +201,11 @@ class ZWriteView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        request.user.send_to_user_process({
+        response = request.user.send_to_user_process({
             'type': 'zwrite',
             'message': serializer.validated_data,
-        })
-        return Response()
+        }, wait_for_response=True)
+        return Response(response)
 
 
 # Roost's endpoints:

@@ -198,6 +198,9 @@ class UserProcess(_ChannelLayerMixin):
 
     async def zwrite(self, message):
         print(self.principal, 'zwrite', message['message'])
+        reply_channel = message.get('_reply_to')
+        if reply_channel is not None:
+            await self.channel_layer.send(reply_channel, {'ack': 'stubbed'})
 
     async def subscribe(self, message):
         print(self.principal, 'subscribe', message)
