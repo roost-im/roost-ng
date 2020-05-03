@@ -194,7 +194,16 @@ class UserProcess(_ChannelLayerMixin):
 
     # Start of Channel Layer message handlers
     async def test(self, message):
-        print(message)
+        print(self.principal, 'test', message)
+
+    async def zwrite(self, message):
+        print(self.principal, 'zwrite', message['message'])
+
+    async def subscribe(self, message):
+        print(self.principal, 'subscribe', message)
+
+    async def unsubscribe(self, message):
+        print(self.principal, 'unsubscribe', message)
     # End message handlers
 
     async def zephyr_handler(self):
