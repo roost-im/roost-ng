@@ -2,12 +2,29 @@ import functools
 import sys
 
 # pylint: disable=ungrouped-imports
+
+# Stupid tricks to try and build the c bits of the zephyr bindings on the fly,
+# whether used standalone or as part of the larger project.
+
+_relative_imports = True
 try:
-    from . import _zephyr as _z
-except ImportError:
     from . import _zephyr_cffi
-    _zephyr_cffi.ffibuilder.compile()
-    from . import _zephyr as _z
+except ImportError:
+    import _zephyr_cffi
+    _relative_imports = False
+
+if _relative_imports:
+    try:
+        from . import _zephyr as _z
+    except ImportError:
+        _zephyr_cffi.ffibuilder.compile()
+        from . import _zephyr as _z
+else:
+    try:
+        import _zephyr as _z
+    except ImportError:
+        _zephyr_cffi.ffibuilder.compile()
+        import _zephyr as _z
 # pylint: enable=ungrouped-imports
 
 
