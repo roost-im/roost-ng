@@ -19,7 +19,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 import ctypes
 
 
@@ -245,3 +244,39 @@ krb5_decode_ticket.argtypes = (
 krb5_free_ticket = libkrb5.krb5_free_ticket
 krb5_free_ticket.restype = None
 krb5_free_ticket.argtypes = (krb5_context, krb5_ticket_ptr)
+
+
+# ********************************************************************************
+# We want a few more bits of libkrb5 than roost-python wanted; adding them here.
+
+# Constants
+K5VM_PRINCIPAL = -1760647408
+KV5M_TICKET = -1760647411
+KV5M_ENC_DATA = -1760647418
+KV5M_DATA = -1760647422
+
+# Data Types
+krb5_address_ptr = ctypes.POINTER(krb5_address)
+krb5_data_ptr = ctypes.POINTER(krb5_data)
+krb5_keyblock_ptr = ctypes.POINTER(krb5_keyblock)
+
+# Functions
+krb5_cc_initialize = libkrb5.krb5_cc_initialize
+krb5_cc_initialize.restype = krb5_error_code
+krb5_cc_initialize.argtypes = (krb5_context, krb5_ccache, krb5_principal)
+
+krb5_cc_store_cred = libkrb5.krb5_cc_store_cred
+krb5_cc_store_cred.restype = krb5_error_code
+krb5_cc_store_cred.argtypes = (krb5_context, krb5_ccache, krb5_creds_ptr)
+
+krb5_init_keyblock = libkrb5.krb5_init_keyblock
+krb5_init_keyblock.restype = krb5_error_code
+krb5_init_keyblock.argtypes = (krb5_context,
+                               krb5_enctype,
+                               ctypes.c_uint,
+                               ctypes.POINTER(krb5_keyblock_ptr))
+
+# This is a kerberos internal, exported for GSSAPI to use, and I feel bad, but here we are.
+encode_krb5_ticket = libkrb5.encode_krb5_ticket
+encode_krb5_ticket.restype = krb5_error_code
+encode_krb5_ticket.argtypes = (ctypes.POINTER(krb5_ticket), ctypes.POINTER(krb5_data_ptr))

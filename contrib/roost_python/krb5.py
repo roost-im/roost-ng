@@ -18,6 +18,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 import base64
 import ctypes
 import functools
@@ -54,9 +55,11 @@ def check_error(fn):
 
 krb5_init_context = check_error(krb5_ctypes.krb5_init_context)
 krb5_free_context = check_error(krb5_ctypes.krb5_free_context)
+krb5_cc_initialize = check_error(krb5_ctypes.krb5_cc_initialize)
 krb5_cc_default = check_error(krb5_ctypes.krb5_cc_default)
 krb5_cc_close = check_error(krb5_ctypes.krb5_cc_close)
 krb5_cc_get_principal = check_error(krb5_ctypes.krb5_cc_get_principal)
+krb5_cc_store_cred = check_error(krb5_ctypes.krb5_cc_store_cred)
 krb5_free_principal = check_error(krb5_ctypes.krb5_free_principal)
 krb5_unparse_name = check_error(krb5_ctypes.krb5_unparse_name)
 krb5_free_unparsed_name = check_error(krb5_ctypes.krb5_free_unparsed_name)
@@ -64,6 +67,8 @@ krb5_build_principal = check_error(krb5_ctypes.krb5_build_principal)
 krb5_get_credentials = check_error(krb5_ctypes.krb5_get_credentials)
 krb5_free_creds = check_error(krb5_ctypes.krb5_free_creds)
 krb5_free_ticket = check_error(krb5_ctypes.krb5_free_ticket)
+krb5_init_keyblock = check_error(krb5_ctypes.krb5_init_keyblock)
+encode_krb5_ticket = check_error(krb5_ctypes.encode_krb5_ticket)
 
 
 # This one is weird and takes no context. But the free function does??
@@ -80,7 +85,7 @@ def to_str(s):
     return s
 
 
-class Context(object):
+class Context:
     def __init__(self):
         self._handle = krb5_ctypes.krb5_context()
         krb5_init_context(self._handle)
@@ -123,7 +128,7 @@ class Context(object):
         return ticket
 
 
-class CCache(object):
+class CCache:
     def __init__(self, ctx):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_ccache()
@@ -159,7 +164,7 @@ class CCache(object):
         return creds
 
 
-class Principal(object):
+class Principal:
     def __init__(self, ctx):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_principal()
@@ -182,7 +187,7 @@ class Principal(object):
         return '<%s: %s>' % (self.__class__.__name__, self.unparse_name())
 
 
-class Credentials(object):
+class Credentials:
     def __init__(self, ctx):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_creds_ptr()
@@ -250,7 +255,7 @@ class Credentials(object):
         return ret
 
 
-class Ticket(object):
+class Ticket:
     def __init__(self, ctx):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_ticket_ptr()
@@ -273,7 +278,6 @@ class Ticket(object):
             'kvno': self._handle.contents.enc_part.kvno,
             'etype': self._handle.contents.enc_part.enctype,
             'cipher': base64.b64encode(
-                self._handle.contents.enc_part.ciphertext.as_str()).decode(
-                    'ascii'),
+                self._handle.contents.enc_part.ciphertext.as_str()).decode('ascii'),
         }
         return ret
