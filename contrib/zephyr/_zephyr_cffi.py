@@ -39,7 +39,6 @@ Code_t ZNewFormatNotice(ZNotice_t*, char**, int*, Z_AuthProc);
 Code_t ZFormatNoticeList(ZNotice_t*, char**, int,
                          char **, int*, Z_AuthProc);
 Code_t ZFormatRawNoticeList(ZNotice_t *, char *[], int, char **, int *);
-// Code_t ZFormatSmallNotice(ZNotice_t*, ZPacket_t, int*, Z_AuthProc);
 Code_t ZFormatSmallRawNotice(ZNotice_t *, ZPacket_t, int *);
 Code_t ZNewFormatSmallRawNotice(ZNotice_t *, ZPacket_t, int *);
 Code_t ZFormatSmallRawNoticeList(ZNotice_t *, char *[], int, ZPacket_t, int *);
@@ -61,7 +60,6 @@ Code_t ZMakeZcode32(char *, int, unsigned long);
 Code_t ZReceivePacket(ZPacket_t, int*, struct sockaddr_in*);
 Code_t ZCheckAuthentication(ZNotice_t*, struct sockaddr_in*);
 Code_t ZCheckZcodeAuthentication(ZNotice_t*, struct sockaddr_in*);
-// Code_t ZCheckZcodeRealmAuthentication(ZNotice_t*, struct sockaddr_in*, char *realm);
 Code_t ZInitLocationInfo(char *hostname, char *tty);
 Code_t ZSetLocation(char *exposure);
 Code_t ZUnsetLocation(void);
