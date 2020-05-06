@@ -29,7 +29,13 @@ else:
 
 
 class ZephyrError(Exception):
-    pass
+    def __init__(self, err_code):
+        # pylint: disable=super-init-not-called
+        self.err_code = err_code
+        self.message = _z.ffi.string(_z.lib.error_message(err_code)).decode('utf-8')
+
+    def __str__(self):
+        return f'{self.message} [{self.err_code}]'
 
 
 def check_error(func):

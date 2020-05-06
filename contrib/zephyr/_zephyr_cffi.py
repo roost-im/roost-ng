@@ -113,6 +113,9 @@ Code_t ZTransliterate(char *in, int inlen, char *inset, char *outset, char **out
 char *ZExpandRealm(char *realm);
 Code_t ZDumpSession(char **buffer, int *ret_len);
 Code_t ZLoadSession(char *buffer, int len);
+
+// ComErr
+char const *error_message (long);
 """)
 
 ffibuilder.set_source(
