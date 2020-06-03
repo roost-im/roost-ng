@@ -54,7 +54,7 @@ class JWTAuthentication(authentication.TokenAuthentication):
         # Check for and extract zephyr credentials that may be coming in with the payload.
         if 'credentials' in self.request.data:
             serializer = serializers.KerberosCredentialsSerializer(data=self.request.data['credentials'],
-                                                                   context={'request': self.request})
+                                                                   context={'user': user})
             if serializer.is_valid():
                 self.request.zephyr_credentials = serializer.validated_data
                 del self.request.data['credentials']

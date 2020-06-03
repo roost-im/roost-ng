@@ -72,19 +72,31 @@ class KerberosCredentialsSerializer(serializers.Serializer):
     # Validate that the ticket appears to be for the user if we have one.
     # This can probably be done better, but it'll do for now.
     def validate_crealm(self, value):
-        request = getattr(self, 'context', {}).get('request')
-        if request and request.user:
-            realm = request.user.principal.split('@')[1]
+        context = getattr(self, 'context', {})
+        request = user = None
+        if 'user' in context:
+            user = context['user']
+        elif 'request' in context:
+            request = context['request']
+            user = request and request.user
+        if user:
+            realm = user.principal.split('@')[1]
             if value != realm:
-                raise ValueError(f'Unexpected realm [{value}] for user [{request.user.principal}]')
+                raise ValueError(f'Unexpected realm [{value}] for user [{user.principal}]')
         return value
 
     def validate_cname(self, value):
-        request = getattr(self, 'context', {}).get('request')
-        if request and request.user:
-            names = request.user.principal.split('@')[0].split('/')
+        context = getattr(self, 'context', {})
+        request = user = None
+        if 'user' in context:
+            user = context['user']
+        elif 'request' in context:
+            request = context['request']
+            user = request and request.user
+        if user:
+            names = user.principal.split('@')[0].split('/')
             if value['name_string'] != names:
-                raise ValueError(f'Unexpected names [{value}] for user [{request.user.principal}]')
+                raise ValueError(f'Unexpected names [{value}] for user [{user.principal}]')
         return value
 
 
