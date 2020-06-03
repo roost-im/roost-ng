@@ -64,6 +64,7 @@ krb5_free_principal = check_error(krb5_ctypes.krb5_free_principal)
 krb5_unparse_name = check_error(krb5_ctypes.krb5_unparse_name)
 krb5_free_unparsed_name = check_error(krb5_ctypes.krb5_free_unparsed_name)
 krb5_build_principal = check_error(krb5_ctypes.krb5_build_principal)
+krb5_parse_name = check_error(krb5_ctypes.krb5_parse_name)
 krb5_get_credentials = check_error(krb5_ctypes.krb5_get_credentials)
 krb5_free_creds = check_error(krb5_ctypes.krb5_free_creds)
 krb5_free_ticket = check_error(krb5_ctypes.krb5_free_ticket)
@@ -112,6 +113,9 @@ class Context:
                              *name_args)
         return principal
 
+    def parse_name(self, name):
+        return Principal(self, name)
+
     def decode_ticket(self, data):
         data = to_str(data)
         data_c = krb5_ctypes.krb5_data()
@@ -136,6 +140,13 @@ class CCache:
     def __del__(self):
         if bool(self._handle):
             krb5_cc_close(self._ctx._handle, self._handle)
+
+    def init_name(self, princ_str):
+        princ = self._ctx.parse_name(princ_str)
+        krb5_cc_initialize(
+            self._ctx._handle,
+            self._handle,
+            princ._handle)
 
     def get_principal(self):
         principal = Principal(self._ctx)
@@ -165,9 +176,11 @@ class CCache:
 
 
 class Principal:
-    def __init__(self, ctx):
+    def __init__(self, ctx, princ_str=None):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_principal()
+        if princ_str:
+            krb5_parse_name(ctx._handle, princ_str.encode(), self._handle)
 
     def __del__(self):
         if bool(self._handle):
@@ -181,7 +194,7 @@ class Principal:
         return name
 
     def __str__(self):
-        return self.unparse_name()
+        return self.unparse_name().decode()
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.unparse_name())

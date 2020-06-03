@@ -222,6 +222,14 @@ krb5_build_principal.argtypes = (
     ctypes.c_uint,
     ctypes.POINTER(ctypes.c_char))
 
+krb5_parse_name = libkrb5.krb5_parse_name
+krb5_parse_name.restype = krb5_error_code
+krb5_parse_name.argtypes = (
+    krb5_context,
+    ctypes.c_char_p,
+    ctypes.POINTER(krb5_principal))
+
+
 krb5_get_credentials = libkrb5.krb5_get_credentials
 krb5_get_credentials.restype = krb5_error_code
 krb5_get_credentials.argtypes = (
