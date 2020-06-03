@@ -14,6 +14,8 @@ import django.apps
 from django.conf import settings
 import setproctitle
 
+import contrib.roost_python.krb5 as k5
+
 from . import utils
 
 _LOGGER = logging.getLogger(__name__)
@@ -177,12 +179,20 @@ class UserProcess(_ChannelLayerMixin):
     def __str__(self):
         return f'UserProcess<{self.principal}>'
 
+    def _initialize_memory_ccache(self):
+        # Repoint to a new, in-memory credential cache.
+        os.environ['KRB5CCNAME'] = 'MEMORY:'
+        ctx = k5.Context()
+        ccache = ctx.cc_default()
+        ccache.init_name(self.principal)
+
     @property
     def group_names(self):
         return [utils.principal_to_group_name(self.principal)]
 
     def start(self):
         setproctitle.setproctitle(f'roost:{self.principal}')
+        self._initialize_memory_ccache()
         async_to_sync(self.run)()
 
     async def run(self):
