@@ -128,8 +128,7 @@ class Message(models.Model):
     receive_time = models.DateTimeField(auto_now_add=True)
 
     # more zgram fields
-    auth = models.BooleanField()  # was the zgram authentic?
-    auth_checked = models.BooleanField()  # were we able to confirm it was authentic?
+    auth = models.BooleanField()
     sender = models.CharField(max_length=255, db_index=True)
     recipient = models.CharField(max_length=255, db_index=True, blank=True)
 

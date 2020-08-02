@@ -49,7 +49,6 @@ class Migration(migrations.Migration):
                 ('time', models.DateTimeField()),
                 ('receive_time', models.DateTimeField(auto_now_add=True)),
                 ('auth', models.BooleanField()),
-                ('auth_checked', models.BooleanField()),
                 ('sender', models.CharField(db_index=True, max_length=255)),
                 ('recipient', models.CharField(blank=True, db_index=True, max_length=255)),
                 ('conversation', models.CharField(blank=True, db_index=True, max_length=255)),
