@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 ('conversation', models.CharField(blank=True, db_index=True, max_length=255)),
                 ('is_personal', models.BooleanField(db_index=True)),
                 ('is_outgoing', models.BooleanField()),
-                ('uid', models.BinaryField(max_length=16)),
+                ('uid', models.CharField(max_length=16)),
                 ('opcode', models.CharField(blank=True, max_length=255)),
                 ('signature', models.CharField(max_length=255)),
                 ('message', models.BinaryField()),
