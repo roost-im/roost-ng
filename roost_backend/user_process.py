@@ -123,7 +123,7 @@ class Overseer(_ChannelLayerMixin):
     def start(self):
         if not settings.configured:
             django.setup()
-        setproctitle.setproctitle(f'roost:OVERSEER')
+        setproctitle.setproctitle('roost:OVERSEER')
         user_qs = django.apps.apps.get_model('roost_backend', 'User').objects.all()
         self.user_tasks = {
             principal: None
