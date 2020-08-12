@@ -1,0 +1,115 @@
+import base64
+import ctypes
+import logging
+import os
+
+import contrib.roost_python.krb5 as k5
+import contrib.roost_python.krb5_ctypes as kc
+
+_LOGGER = logging.getLogger(__name__)
+
+def principal_to_group_name(princ):
+    b64_principal = base64.b64encode(princ.encode("utf-8")).decode("ascii")
+    return f'PRINC_{b64_principal.strip("=")}'
+
+
+def initialize_memory_ccache(principal):
+    # Repoint to a new, in-memory credential cache.
+    os.environ['KRB5CCNAME'] = 'MEMORY:'
+    ctx = k5.Context()
+    ccache = ctx.cc_default()
+    ccache.init_name(principal)
+
+
+def add_credential_to_ccache(creds):
+    # pylint: disable=protected-access, too-many-locals
+    # all this should be abstracted away somewhere else.
+    # This may be leaky. Consider kdestroy/re-init/re-ping zephyr servers.
+    def json_name_bits_to_princ(ctx, realm, name):
+        principal = ctx.build_principal(realm, name['name_string'])
+        principal._handle.contents.type = name['name_type']
+        return principal
+
+    def flags_to_int(flags):
+        assert len(flags) == 32
+        assert set(flags).issubset({0, 1})
+        ret = 0
+        for flag in flags:
+            ret = (ret << 1) | flag
+        return ret
+
+    def _b64(data):
+        # b64decode strings, leave bytes alone
+        if isinstance(data, str):
+            return base64.b64decode(data)
+        return data
+
+    ctx = k5.Context()
+    ccache = ctx.cc_default()
+    kcreds = kc.krb5_creds()
+    kcreds.magic = -1760647408  # KV5M_PRINCIPAL
+
+    # Extract and massage the principals
+    server = json_name_bits_to_princ(ctx, creds['srealm'], creds['sname'])
+    client = json_name_bits_to_princ(ctx, creds['crealm'], creds['cname'])
+    tkt_server = json_name_bits_to_princ(ctx,
+                                         creds['ticket']['realm'],
+                                         creds['ticket']['sname'])
+    kcreds.client = client._handle
+    kcreds.server = server._handle
+
+    # Prep the keyblock
+    p_keyblock = kc.krb5_keyblock_ptr()
+    key = creds['key']
+    keydata = _b64(key['keyvalue'])
+    kc.krb5_init_keyblock(ctx._handle, key['keytype'], len(keydata), ctypes.byref(p_keyblock))
+    ctypes.memmove(p_keyblock.contents.contents, keydata, len(keydata))
+    kcreds.keyblock = p_keyblock.contents
+
+    # set the times
+    kcreds.times.authtime = creds['authtime'] // 1000
+    kcreds.times.starttime = creds['starttime'] // 1000
+    kcreds.times.endtime = creds['endtime'] // 1000
+    kcreds.times.renew_till = creds['renew_till'] // 1000
+    kcreds.is_skey = False
+
+    # This makes roost's python sad. Add a null check there before dereferencing.
+    # Also, we're ignoring any addresses that may be in the tickets. Fix that.
+    # kcreds.addresses = ctypes.POINTER(krb5_address_ptr)()
+
+    # Parse the flags back into an int
+    kcreds.ticket_flags = flags_to_int(creds['flags'])
+    # Create a krb5_ticket...
+    jtkt = creds['ticket']
+    ktkt = kc.krb5_ticket()
+    ktkt.magic = -1760647411  # KV5M_TICKET
+    ktkt.server = tkt_server._handle
+    ktkt.enc_part = kc.krb5_enc_data()
+    ktkt.enc_part.magic = -1760647418  # KV5M_ENC_DATA
+    ktkt.enc_part.enctype = jtkt['enc_part']['etype']
+    ktkt.enc_part.kvno = jtkt['enc_part']['kvno']
+    ktkt.enc_part.ciphertext = kc.krb5_data()
+    ktkt.enc_part.ciphertext.magic = -1760647422  # KV5M_DATA
+    tkt_ciphertext = _b64(jtkt['enc_part']['cipher'])
+    ktkt.enc_part.ciphertext.length = len(tkt_ciphertext)
+    ktkt.enc_part.ciphertext.data = (ctypes.c_char * len(tkt_ciphertext))(*tkt_ciphertext)
+
+    # ...and be sad that we have to reach into krb5 internals to put it into the krb5_creds struct.
+    p_tkt_data = kc.krb5_data_ptr()
+    k5.encode_krb5_ticket(ctypes.byref(ktkt), ctypes.byref(p_tkt_data))
+    kcreds.ticket = p_tkt_data.contents
+
+    # and finally, store the new cred in the ccache.
+    k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds)
+
+def get_zephyr_creds(realm):
+    try:
+        context = k5.Context()
+        ccache = context.cc_default()
+        principal = ccache.get_principal()
+        zephyr = context.build_principal(realm, ['zephyr', 'zephyr'])
+        creds = ccache.get_credentials(principal, zephyr, cache_only=True)
+        creds_dict = creds.to_dict()
+        return creds_dict
+    except k5.Error:
+        return {}
