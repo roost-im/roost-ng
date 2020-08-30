@@ -54,7 +54,7 @@ pylint-django==2.2.0
 pylint-plugin-utils==0.6
 pyOpenSSL==19.1.0
 pytz==2020.1
-PyZephyr==0.2.2
+git+git://github.com/asedeno/python-zephyr@roost-fork#PyZephyr
 service-identity==18.1.0
 setproctitle==1.1.10
 six==1.15.0
