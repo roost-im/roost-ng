@@ -21,6 +21,7 @@
 
 import base64
 import ctypes
+import datetime
 import functools
 
 from . import krb5_ctypes
@@ -58,9 +59,18 @@ krb5_free_context = check_error(krb5_ctypes.krb5_free_context)
 krb5_cc_initialize = check_error(krb5_ctypes.krb5_cc_initialize)
 krb5_cc_default = check_error(krb5_ctypes.krb5_cc_default)
 krb5_cc_close = check_error(krb5_ctypes.krb5_cc_close)
+krb5_cc_destroy = check_error(krb5_ctypes.krb5_cc_destroy)
 krb5_cc_get_principal = check_error(krb5_ctypes.krb5_cc_get_principal)
 krb5_cc_store_cred = check_error(krb5_ctypes.krb5_cc_store_cred)
+krb5_free_keytab_entry_contents = check_error(krb5_ctypes.krb5_free_keytab_entry_contents)
 krb5_free_principal = check_error(krb5_ctypes.krb5_free_principal)
+krb5_get_init_creds_keytab = check_error(krb5_ctypes.krb5_get_init_creds_keytab)
+krb5_kt_client_default = check_error(krb5_ctypes.krb5_kt_client_default)
+krb5_kt_default = check_error(krb5_ctypes.krb5_kt_default)
+krb5_kt_start_seq_get = check_error(krb5_ctypes.krb5_kt_start_seq_get)
+krb5_kt_next_entry = check_error(krb5_ctypes.krb5_kt_next_entry)
+krb5_kt_end_seq_get = check_error(krb5_ctypes.krb5_kt_end_seq_get)
+krb5_kt_close = check_error(krb5_ctypes.krb5_kt_close)
 krb5_unparse_name = check_error(krb5_ctypes.krb5_unparse_name)
 krb5_free_unparsed_name = check_error(krb5_ctypes.krb5_free_unparsed_name)
 krb5_build_principal = check_error(krb5_ctypes.krb5_build_principal)
@@ -69,6 +79,8 @@ krb5_get_credentials = check_error(krb5_ctypes.krb5_get_credentials)
 krb5_free_creds = check_error(krb5_ctypes.krb5_free_creds)
 krb5_free_ticket = check_error(krb5_ctypes.krb5_free_ticket)
 krb5_init_keyblock = check_error(krb5_ctypes.krb5_init_keyblock)
+krb5_get_init_creds_opt_alloc = check_error(krb5_ctypes.krb5_get_init_creds_opt_alloc)
+krb5_get_init_creds_opt_free= check_error(krb5_ctypes.krb5_get_init_creds_opt_free)
 encode_krb5_ticket = check_error(krb5_ctypes.encode_krb5_ticket)
 
 
@@ -99,6 +111,16 @@ class Context:
         ccache = CCache(self)
         krb5_cc_default(self._handle, ccache._handle)
         return ccache
+
+    def kt_client_default(self):
+        keytab = Keytab(self)
+        krb5_kt_client_default(self._handle, keytab._handle)
+        return keytab
+
+    def kt_default(self):
+        keytab = Keytab(self)
+        krb5_kt_default(self._handle, keytab._handle)
+        return keytab
 
     def build_principal(self, realm, name):
         realm = to_str(realm)
@@ -141,12 +163,34 @@ class CCache:
         if bool(self._handle):
             krb5_cc_close(self._ctx._handle, self._handle)
 
-    def init_name(self, princ_str):
-        princ = self._ctx.parse_name(princ_str)
+    def init_name(self, princ):
+        if isinstance(princ, (str, bytes)):
+            princ = self._ctx.parse_name(princ)
         krb5_cc_initialize(
             self._ctx._handle,
             self._handle,
             princ._handle)
+
+    def init_from_keytab(self, keytab, service=None):
+        creds = krb5_ctypes.krb5_creds()
+
+        client_principal = keytab.get_first_principal()
+        options = ctypes.POINTER(krb5_ctypes.krb5_get_init_creds_opt)()
+        krb5_get_init_creds_opt_alloc(self._ctx._handle, options)
+        self.init_name(client_principal)
+        if isinstance(service, str):
+            service = service.encode()
+        elif isinstance(service, Principal):
+            service = service.unparse_name()
+        krb5_get_init_creds_keytab(self._ctx._handle,
+                                   creds,
+                                   client_principal._handle,
+                                   keytab._handle,
+                                   0,
+                                   service,
+                                   options)
+        krb5_cc_store_cred(self._ctx._handle, self._handle, creds)
+        krb5_get_init_creds_opt_free(self._ctx._handle, options)
 
     def get_principal(self):
         principal = Principal(self._ctx)
@@ -174,13 +218,80 @@ class CCache:
                              creds._handle)
         return creds
 
+    def destroy(self):
+        krb5_cc_destroy(self._ctx._handle, self._handle)
+        self._handle = None
+
+
+class Keytab:
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self._handle = krb5_ctypes.krb5_keytab()
+
+    def __del__(self):
+        if bool(self._handle):
+            krb5_kt_close(self._ctx._handle, self._handle)
+
+    def get_entries(self, max=0):
+        cur = krb5_ctypes.krb5_kt_cursor()
+        ret = []
+        krb5_kt_start_seq_get(self._ctx._handle, self._handle, cur)
+        while True:
+            entry = KeytabEntry(self._ctx)
+            try:
+                krb5_kt_next_entry(self._ctx._handle, self._handle, entry._handle, cur)
+            except Error:
+                break
+            ret.append(entry)
+            if max and len(ret) == max:
+                break
+        krb5_kt_end_seq_get(self._ctx._handle, self._handle, cur)
+        return ret
+
+    def get_first_entry(self):
+        return self.get_entries(max=1)[0]
+
+    def get_first_principal(self):
+        return self.get_first_entry().principal()
+
+
+class KeytabEntry:
+    def __init__(self, ctx):
+        self._ctx = ctx
+        self._handle = krb5_ctypes.krb5_keytab_entry()
+
+    def __del__(self):
+        if bool(self._handle):
+            krb5_free_keytab_entry_contents(self._ctx._handle, self._handle)
+
+    def unparse_name(self):
+        name_c = ctypes.c_char_p()
+        krb5_unparse_name(self._ctx._handle, self._handle.principal, name_c)
+        name = name_c.value
+        krb5_free_unparsed_name(self._ctx._handle, name_c)
+        return name
+
+    def principal(self):
+        return Principal(self._ctx, princ_str=self.unparse_name())
+
+    def __str__(self):
+        return self.unparse_name().decode()
+
+    def __repr__(self):
+        return '<%s: %s (kvno: %i)>' % (self.__class__.__name__, self.unparse_name(), self._handle.vno)
 
 class Principal:
     def __init__(self, ctx, princ_str=None):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_principal()
         if princ_str:
-            krb5_parse_name(ctx._handle, princ_str.encode(), self._handle)
+            princ = None
+            if isinstance(princ_str, bytes):
+                princ = princ_str
+            elif isinstance(princ_str, str):
+                princ = princ_str.encode()
+            if princ:
+                krb5_parse_name(ctx._handle, princ, self._handle)
 
     def __del__(self):
         if bool(self._handle):
@@ -215,6 +326,13 @@ class Credentials:
     def decode_second_ticket(self):
         return self._ctx._decode_second_ticket(
             self._handle.contents.second_ticket)
+
+    def is_valid(self):
+        """Chceks to see if the credential is in its valid lifetime."""
+        start = self._handle.contents.times.starttime
+        end = self._handle.contents.times.endtime
+        now = datetime.datetime.utcnow().timestamp()
+        return start <= now < end;
 
     def to_dict(self):
         # TODO(davidben): More sensible would be to put this format

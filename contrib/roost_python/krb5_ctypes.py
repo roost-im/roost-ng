@@ -264,14 +264,49 @@ KV5M_ENC_DATA = -1760647418
 KV5M_DATA = -1760647422
 
 # Data Types
+krb5_deltat = krb5_int32
 krb5_address_ptr = ctypes.POINTER(krb5_address)
 krb5_data_ptr = ctypes.POINTER(krb5_data)
 krb5_keyblock_ptr = ctypes.POINTER(krb5_keyblock)
+krb5_preauthtype = krb5_int32
+
+class krb5_keytab_entry(ctypes.Structure):
+    _fields_ = [
+        ('magic', krb5_magic),
+        ('principal', krb5_principal),
+        ('timestamp', krb5_timestamp),
+        ('vno', krb5_kvno),
+        ('keyblock', krb5_keyblock),
+    ]
+
+class krb5_get_init_creds_opt(ctypes.Structure):
+    _fields_ = [
+        ('flags', krb5_flags),
+        ('tkt_life', krb5_deltat),
+        ('renew_life', krb5_deltat),
+        ('forwardable', ctypes.c_int),
+        ('proxiable', ctypes.c_int),
+        ('enctype_list', ctypes.POINTER(krb5_enctype)),
+        ('enctype_list_length',ctypes.c_int),
+        ('address_list', ctypes.POINTER(ctypes.POINTER(krb5_address))),
+        ('preauth_list', ctypes.POINTER(krb5_preauthtype)),
+        ('preauth_list_length', ctypes.c_int),
+        ('salt', ctypes.POINTER(krb5_data)),
+    ]
+
+krb5_get_init_creds_opt_ptr = ctypes.POINTER(krb5_get_init_creds_opt)
+
+krb5_keytab = ctypes.c_void_p
+krb5_kt_cursor = ctypes.c_void_p
 
 # Functions
 krb5_cc_initialize = libkrb5.krb5_cc_initialize
 krb5_cc_initialize.restype = krb5_error_code
 krb5_cc_initialize.argtypes = (krb5_context, krb5_ccache, krb5_principal)
+
+krb5_cc_destroy = libkrb5.krb5_cc_destroy
+krb5_cc_destroy.restype = krb5_error_code
+krb5_cc_destroy.argtypes = (krb5_context, krb5_ccache)
 
 krb5_cc_store_cred = libkrb5.krb5_cc_store_cred
 krb5_cc_store_cred.restype = krb5_error_code
@@ -283,6 +318,63 @@ krb5_init_keyblock.argtypes = (krb5_context,
                                krb5_enctype,
                                ctypes.c_uint,
                                ctypes.POINTER(krb5_keyblock_ptr))
+
+krb5_free_keytab_entry_contents = libkrb5.krb5_free_keytab_entry_contents
+krb5_free_keytab_entry_contents.restype = krb5_error_code
+krb5_free_keytab_entry_contents.argtypes = (krb5_context,
+                                            ctypes.POINTER(krb5_keytab_entry))
+
+krb5_kt_close = libkrb5.krb5_kt_close
+krb5_kt_close.restype = krb5_error_code
+krb5_kt_close.argtypes = (krb5_context, krb5_keytab)
+
+krb5_kt_client_default = libkrb5.krb5_kt_client_default
+krb5_kt_client_default.restype = krb5_error_code
+krb5_kt_client_default.argtypes = (krb5_context, ctypes.POINTER(krb5_keytab))
+
+krb5_kt_default = libkrb5.krb5_kt_default
+krb5_kt_default.restype = krb5_error_code
+krb5_kt_default.argtypes = (krb5_context, ctypes.POINTER(krb5_keytab))
+
+krb5_kt_start_seq_get = libkrb5.krb5_kt_start_seq_get
+krb5_kt_start_seq_get.restype = krb5_error_code
+krb5_kt_start_seq_get.argtypes = (krb5_context,
+                                  krb5_keytab,
+                                  ctypes.POINTER(krb5_kt_cursor))
+
+krb5_kt_next_entry = libkrb5.krb5_kt_next_entry
+krb5_kt_next_entry.restype = krb5_error_code
+krb5_kt_next_entry.argtypes = (krb5_context,
+                               krb5_keytab,
+                               ctypes.POINTER(krb5_keytab_entry),
+                               ctypes.POINTER(krb5_kt_cursor))
+
+krb5_kt_end_seq_get = libkrb5.krb5_kt_end_seq_get
+krb5_kt_end_seq_get.restype = krb5_error_code
+krb5_kt_end_seq_get.argtypes = (krb5_context,
+                                krb5_keytab,
+                                ctypes.POINTER(krb5_kt_cursor))
+
+krb5_get_init_creds_keytab = libkrb5.krb5_get_init_creds_keytab
+krb5_get_init_creds_keytab.restype = krb5_error_code
+krb5_get_init_creds_keytab.argtypes = (krb5_context,
+                                       krb5_creds_ptr,
+                                       krb5_principal,
+                                       krb5_keytab,
+                                       krb5_deltat,
+                                       ctypes.POINTER(ctypes.c_char),
+                                       krb5_get_init_creds_opt_ptr)
+
+krb5_get_init_creds_opt_alloc = libkrb5.krb5_get_init_creds_opt_alloc
+krb5_get_init_creds_opt_alloc.restype = krb5_error_code
+krb5_get_init_creds_opt_alloc.argtypes = (krb5_context,
+                                          ctypes.POINTER(krb5_get_init_creds_opt_ptr))
+
+
+krb5_get_init_creds_opt_free = libkrb5.krb5_get_init_creds_opt_free
+krb5_get_init_creds_opt_free.restype = None
+krb5_get_init_creds_opt_free.argtypes = (krb5_context,
+                                         ctypes.POINTER(krb5_get_init_creds_opt_ptr))
 
 # This is a kerberos internal, exported for GSSAPI to use, and I feel bad, but here we are.
 encode_krb5_ticket = libkrb5.encode_krb5_ticket
