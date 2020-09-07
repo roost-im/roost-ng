@@ -8,9 +8,9 @@ import contrib.roost_python.krb5_ctypes as kc
 
 _LOGGER = logging.getLogger(__name__)
 
-def principal_to_group_name(princ):
+def principal_to_group_name(princ, group_type):
     b64_principal = base64.b64encode(princ.encode("utf-8")).decode("ascii")
-    return f'PRINC_{b64_principal.strip("=")}'
+    return f'_{group_type}_PRINC_{b64_principal.strip("=")}'
 
 
 def initialize_memory_ccache(principal):

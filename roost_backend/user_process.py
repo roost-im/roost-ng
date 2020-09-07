@@ -186,7 +186,7 @@ class UserProcess(_ChannelLayerMixin):
     @property
     def groups(self):
         # The _ChannelLayerMixin requires us to define this.
-        return [utils.principal_to_group_name(self.principal)]
+        return [utils.principal_to_user_process_group_name(self.principal)]
 
     def start(self):
         setproctitle.setproctitle(f'roost:{self.principal}')
