@@ -20,9 +20,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class _ChannelLayerMixin:
-    """This mixin can be used to add Django Channels Layers support to a class.  To ues it, inherit
-    from it and define a property `group_names` of no arguments that returns a list of groups
-    to subscribe to. Then start a task to run the `channel_layer_handler`, cancel it when you
+    """This mixin can be used to add Django Channels Layers support to a class.  To ues it, inherit from
+    it and define a member `groups` or property `groups` of no arguments that returns an iterable of
+    groups to subscribe to. Then start a task to run the `channel_layer_handler`, cancel it when you
     want to stop. This may be worth extracting to a utility module.
     """
     def __init__(self):
@@ -31,7 +31,7 @@ class _ChannelLayerMixin:
         self.channel_receive = None
 
     @property
-    def group_names(self):
+    def groups(self):
         raise NotImplementedError()
 
     async def channel_layer_handler(self):
@@ -42,7 +42,7 @@ class _ChannelLayerMixin:
             self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
 
             # Subscribe to groups
-            for group_name in self.group_names:
+            for group_name in self.groups:
                 await self.channel_layer.group_add(group_name, self.channel_name)
 
             # Wait for and dispatch messages until we get cancelled.
@@ -102,6 +102,8 @@ class Overseer(_ChannelLayerMixin):
     the Manager."""
     # TODO: make this more async
     # TODO: hook into channels layer to alert about new/deleted users.
+    groups = ['UP_OVERSEER']
+
     def __init__(self, stop_event, start=True):
         super().__init__()
         signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -116,9 +118,6 @@ class Overseer(_ChannelLayerMixin):
     def __str__(self):
         return f'Overseer<{self.pid}>'
 
-    @property
-    def group_names(self):
-        return ['UP_OVERSEER']
 
     def start(self):
         if not settings.configured:
@@ -185,7 +184,8 @@ class UserProcess(_ChannelLayerMixin):
 
 
     @property
-    def group_names(self):
+    def groups(self):
+        # The _ChannelLayerMixin requires us to define this.
         return [utils.principal_to_group_name(self.principal)]
 
     def start(self):
