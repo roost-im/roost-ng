@@ -9,18 +9,13 @@ from ...user_process import Manager as UserProcessManager
 class Command(ChannelsRunserverCommand):
     """Start and stop user processes when running channels dev server."""
     def handle(self, *args, **options):
-        upm = None
+        upm_enabled = False
         if options["use_reloader"]:
             if os.environ.get(autoreload.DJANGO_AUTORELOAD_ENV) == 'true':
-                upm = UserProcessManager()
+                upm_enabled = True
         else:
-            upm = UserProcessManager()
+            upm_enabled = True
 
-        try:
-            if upm:
-                upm.start()
+        with UserProcessManager(upm_enabled):
             # Dispatch upward
             super().handle(*args, **options)
-        finally:
-            if upm:
-                upm.stop()
