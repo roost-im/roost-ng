@@ -11,12 +11,24 @@ import channels.layers
 import channels.utils
 import django
 import django.apps
-from django.conf import settings
+from django.core.exceptions import AppRegistryNotReady
 import setproctitle
 
 from . import utils
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _MPDjangoSetupMixin:
+    """This mixin runs django.setup() on __init__. It is to be used by classes that are
+    mp.Process targets.
+    """
+    def __init__(self):
+        try:
+            django.apps.apps.check_models_ready()
+        except AppRegistryNotReady:
+            django.setup()
+        super().__init__()
 
 
 class _ChannelLayerMixin:
@@ -26,6 +38,7 @@ class _ChannelLayerMixin:
     want to stop. This may be worth extracting to a utility module.
     """
     def __init__(self):
+        super().__init__()
         self.channel_layer = None
         self.channel_name = None
         self.channel_receive = None
@@ -95,7 +108,7 @@ class Manager:
         return ret
 
 
-class Overseer(_ChannelLayerMixin):
+class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     """This class is forked by the Manager class. It is responsible for
     forking off the individual user processes and restarting them if
     necessary, as well as for telling them to stop upon from request
@@ -120,8 +133,6 @@ class Overseer(_ChannelLayerMixin):
 
 
     def start(self):
-        if not settings.configured:
-            django.setup()
         setproctitle.setproctitle('roost:OVERSEER')
         user_qs = django.apps.apps.get_model('roost_backend', 'User').objects.all()
         self.user_tasks = {
@@ -160,7 +171,7 @@ class Overseer(_ChannelLayerMixin):
     # End message handlers
 
 
-class UserProcess(_ChannelLayerMixin):
+class UserProcess(_MPDjangoSetupMixin, _ChannelLayerMixin):
     """
     Kerberos and zephyr are not particularly threadsafe, so each user
     will have their own process.
