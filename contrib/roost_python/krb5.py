@@ -80,7 +80,7 @@ krb5_free_creds = check_error(krb5_ctypes.krb5_free_creds)
 krb5_free_ticket = check_error(krb5_ctypes.krb5_free_ticket)
 krb5_init_keyblock = check_error(krb5_ctypes.krb5_init_keyblock)
 krb5_get_init_creds_opt_alloc = check_error(krb5_ctypes.krb5_get_init_creds_opt_alloc)
-krb5_get_init_creds_opt_free= check_error(krb5_ctypes.krb5_get_init_creds_opt_free)
+krb5_get_init_creds_opt_free = check_error(krb5_ctypes.krb5_get_init_creds_opt_free)
 encode_krb5_ticket = check_error(krb5_ctypes.encode_krb5_ticket)
 
 
@@ -280,6 +280,7 @@ class KeytabEntry:
     def __repr__(self):
         return '<%s: %s (kvno: %i)>' % (self.__class__.__name__, self.unparse_name(), self._handle.vno)
 
+
 class Principal:
     def __init__(self, ctx, princ_str=None):
         self._ctx = ctx
@@ -332,7 +333,7 @@ class Credentials:
         start = self._handle.contents.times.starttime
         end = self._handle.contents.times.endtime
         now = datetime.datetime.utcnow().timestamp()
-        return start <= now < end;
+        return start <= now < end
 
     def to_dict(self):
         # TODO(davidben): More sensible would be to put this format

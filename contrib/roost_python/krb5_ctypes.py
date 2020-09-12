@@ -270,6 +270,7 @@ krb5_data_ptr = ctypes.POINTER(krb5_data)
 krb5_keyblock_ptr = ctypes.POINTER(krb5_keyblock)
 krb5_preauthtype = krb5_int32
 
+
 class krb5_keytab_entry(ctypes.Structure):
     _fields_ = [
         ('magic', krb5_magic),
@@ -279,6 +280,7 @@ class krb5_keytab_entry(ctypes.Structure):
         ('keyblock', krb5_keyblock),
     ]
 
+
 class krb5_get_init_creds_opt(ctypes.Structure):
     _fields_ = [
         ('flags', krb5_flags),
@@ -287,12 +289,13 @@ class krb5_get_init_creds_opt(ctypes.Structure):
         ('forwardable', ctypes.c_int),
         ('proxiable', ctypes.c_int),
         ('enctype_list', ctypes.POINTER(krb5_enctype)),
-        ('enctype_list_length',ctypes.c_int),
+        ('enctype_list_length', ctypes.c_int),
         ('address_list', ctypes.POINTER(ctypes.POINTER(krb5_address))),
         ('preauth_list', ctypes.POINTER(krb5_preauthtype)),
         ('preauth_list_length', ctypes.c_int),
         ('salt', ctypes.POINTER(krb5_data)),
     ]
+
 
 krb5_get_init_creds_opt_ptr = ctypes.POINTER(krb5_get_init_creds_opt)
 
