@@ -58,7 +58,7 @@ class JWTAuthentication(authentication.TokenAuthentication):
             if serializer.is_valid():
                 self.request.zephyr_credentials = serializer.validated_data
                 del self.request.data['credentials']
-                user.send_to_user_process({
+                user.send_to_user_subscriber({
                     'type': 'inject_credentials',
                     'creds': serializer.validated_data,
                 })

@@ -184,7 +184,7 @@ class MessageByTimeView(APIView):
 @method_decorator(COMMON_DECORATORS, name='dispatch')
 class ZephyrCredsView(APIView):
     def get(self, request):
-        response = request.user.send_to_user_process({
+        response = request.user.send_to_user_subscriber({
             'type': 'have_valid_credentials',
         }, wait_for_response=True)
 
@@ -208,7 +208,7 @@ class ZWriteView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data['message'])
         serializer.is_valid(raise_exception=True)
-        response = request.user.send_to_user_process({
+        response = request.user.send_to_user_subscriber({
             'type': 'zwrite',
             'message': serializer.validated_data,
         }, wait_for_response=True)

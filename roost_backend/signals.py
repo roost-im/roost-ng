@@ -44,7 +44,7 @@ def resync_subscriber_on_subscription_save(sender, instance, created, **_kwargs)
     payload = {'type': 'resync_subscriptions'}
     if instance.zrecipient == user.principal:
         # personal; send to user process
-        user.send_to_user_process(payload)
+        user.send_to_user_subscriber(payload)
     else:
         utils.send_to_group('ROOST_SERVER_PROCESS', payload)
 
@@ -58,16 +58,16 @@ def resync_subscriber_on_subscription_delete(sender, instance, **_kwargs):
         return
     if instance.zrecipient == user.principal:
         # personal; send to user process
-        user.send_to_user_process(payload)
+        user.send_to_user_subscriber(payload)
     else:
         utils.send_to_group('ROOST_SERVER_PROCESS', payload)
 
 
 @receiver(post_save, sender=models.User)
-def start_new_user_process(sender, instance, created, **_kwargs):
+def start_new_user_subscriber(sender, instance, created, **_kwargs):
     # pylint: disable=unused-argument
     if created:
-        utils.send_to_group('UP_OVERSEER', {
+        utils.send_to_group('OVERSEER', {
             'type': 'add_user',
             'principal': instance.principal,
         })
@@ -76,7 +76,7 @@ def start_new_user_process(sender, instance, created, **_kwargs):
 @receiver(post_delete, sender=models.User)
 def resync_subscriber_on_user_delete(sender, instance, **_kwargs):
     # pylint: disable=unused-argument
-    utils.send_to_group('UP_OVERSEER', {
+    utils.send_to_group('OVERSEER', {
         'type': 'del_user',
         'principal': instance.principal,
     })

@@ -9,7 +9,7 @@ from . import kerberos
 from ..secrets import MESSGE_ID_SEALING_KEY
 
 
-def principal_to_user_process_group_name(princ):
+def principal_to_user_subscriber_group_name(princ):
     return kerberos.principal_to_group_name(princ, 'UP')
 
 

@@ -382,7 +382,7 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     the Manager."""
     # TODO: make this more async
     # TODO: hook into channels layer to alert about new/deleted users.
-    groups = ['UP_OVERSEER']
+    groups = ['OVERSEER']
 
     def __init__(self, stop_event, start=True):
         super().__init__()
@@ -405,7 +405,6 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
             principal: None
             for principal in user_qs.values_list('principal', flat=True)
         }
-        _LOGGER.debug('%s starting...', self)
         async_to_sync(self.oversee)()
 
     async def oversee(self):
@@ -431,13 +430,13 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
 
     async def server_process_watcher(self):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=ServerProcess, args=(self.stop_event,))
+            proc = mp.Process(target=ServerSubscriber, args=(self.stop_event,))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
     async def user_process_watcher(self, principal):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=UserProcess, args=(principal, self.stop_event))
+            proc = mp.Process(target=UserSubscriber, args=(principal, self.stop_event))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
@@ -459,7 +458,7 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     # End message handlers
 
 
-class UserProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
+class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     """Kerberos and zephyr are not particularly threadsafe, so each user
     will have their own process."""
 
@@ -472,12 +471,12 @@ class UserProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
             self.start()
 
     def __str__(self):
-        return f'UserProcess<{self.principal}>'
+        return f'UserSubscriber<{self.principal}>'
 
     @property
     def groups(self):
         # The _ChannelLayerMixin requires us to define this.
-        return [utils.principal_to_user_process_group_name(self.principal)]
+        return [utils.principal_to_user_subscriber_group_name(self.principal)]
 
     @property
     def principal(self):
@@ -519,8 +518,8 @@ class UserProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     # End message handlers
 
 
-class ServerProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
-    """Like the UserProcess, but for shared subscriptions."""
+class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
+    """Like the UserSubscriber, but for shared subscriptions."""
 
     def __init__(self, stop_event, start=True):
         super().__init__()
@@ -530,7 +529,7 @@ class ServerProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
             self.start()
 
     def __str__(self):
-        return 'ServerProcess'
+        return 'ServerSubscriber'
 
     # The _ChannelLayerMixin requires us to define this.
     groups = ['ROOST_SERVER_PROCESS']
@@ -542,7 +541,7 @@ class ServerProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
 
     @property
     def log_prefix(self):
-        return 'ServerProcess'
+        return 'ServerSubscriber'
 
     def get_subs_qs(self):
         # The _ZephyrProcessMixin requires us to define this.
@@ -552,7 +551,7 @@ class ServerProcess(_MPDjangoSetupMixin, _ZephyrProcessMixin):
 
     def start(self):
         _LOGGER.debug('%s starting...', self)
-        setproctitle.setproctitle('roost:server_process')
+        setproctitle.setproctitle('roost:server_subscriber')
         utils.kerberos.initialize_memory_ccache_from_client_keytab()
         async_to_sync(self.run)()
 

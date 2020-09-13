@@ -82,8 +82,8 @@ class User(models.Model):
     def is_anonymous(self):
         return self.id is None
 
-    def send_to_user_process(self, msg, wait_for_response=False):
-        group_name = utils.principal_to_user_process_group_name(self.principal)
+    def send_to_user_subscriber(self, msg, wait_for_response=False):
+        group_name = utils.principal_to_user_subscriber_group_name(self.principal)
         return utils.send_to_group(group_name, msg, wait_for_response)
 
     def send_to_user_sockets(self, msg, wait_for_response=False):
@@ -207,7 +207,7 @@ class Message(models.Model):
 
 class UserProcessState(models.Model):
     """This class will be used to persist data the user process needs. The
-    `data` field format is defined by user_process.py. This table is
+    `data` field format is defined by subscriber.py. This table is
     new to roost-ng and internal only, not to be exposed to clients.
     """
 
@@ -217,7 +217,7 @@ class UserProcessState(models.Model):
 
 class ServerProcessState(models.Model):
     """This class will be used to persist data the server process needs. The
-    `data` field format is defined by user_process.py. This table is
+    `data` field format is defined by subscribers.py. This table is
     new to roost-ng and internal only, not to be exposed to clients.
     """
 
