@@ -114,7 +114,7 @@ class UnsubscribeView(APIView):
     serializer_class = serializers.SubscriptionSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data['subscription'])
         serializer.is_valid(raise_exception=True)
         vdata = serializer.validated_data
         user = self.request.user
