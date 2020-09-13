@@ -365,9 +365,10 @@ class Manager:
 
     def stop(self):
         ret = False
-        if self._proc and self._proc.is_alive():
-            ret = True
-            self._stop_event.set()
+        if self._proc:
+            if self._proc.is_alive():
+                ret = True
+                self._stop_event.set()
             self._proc.join()
 
         self._proc = None
