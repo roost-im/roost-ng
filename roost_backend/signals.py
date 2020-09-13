@@ -1,3 +1,6 @@
+import functools
+
+from django.db import transaction
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
@@ -40,27 +43,35 @@ def resync_subscriber_on_subscription_save(sender, instance, created, **_kwargs)
     # pylint: disable=unused-argument
     if not created:
         return
+
     user = instance.user
-    payload = {'type': 'resync_subscriptions'}
+    group = 'ROOST_SERVER_PROCESS'
     if instance.zrecipient == user.principal:
         # personal; send to user process
-        user.send_to_user_subscriber(payload)
-    else:
-        utils.send_to_group('ROOST_SERVER_PROCESS', payload)
+        group = utils.principal_to_user_subscriber_group_name(user.principal)
+
+    transaction.on_commit(functools.partial(
+        utils.send_to_group,
+        group,
+        {'type': 'resync_subscriptions'}))
 
 
 @receiver(post_delete, sender=models.Subscription)
 def resync_subscriber_on_subscription_delete(sender, instance, **_kwargs):
     # pylint: disable=unused-argument
     user = instance.user
-    payload = {'type': 'resync_subscriptions'}
     if not user:
         return
+
+    group = 'ROOST_SERVER_PROCESS'
     if instance.zrecipient == user.principal:
         # personal; send to user process
-        user.send_to_user_subscriber(payload)
-    else:
-        utils.send_to_group('ROOST_SERVER_PROCESS', payload)
+        group = utils.principal_to_user_subscriber_group_name(user.principal)
+
+    transaction.on_commit(functools.partial(
+        utils.send_to_group,
+        group,
+        {'type': 'resync_subscriptions'}))
 
 
 @receiver(post_save, sender=models.User)
