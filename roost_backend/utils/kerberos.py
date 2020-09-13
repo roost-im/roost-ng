@@ -8,21 +8,35 @@ import contrib.roost_python.krb5_ctypes as kc
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def principal_to_group_name(princ, group_type):
     b64_principal = base64.b64encode(princ.encode("utf-8")).decode("ascii")
     return f'_{group_type}_PRINC_{b64_principal.strip("=")}'
 
 
-def initialize_memory_ccache(principal):
+def initialize_memory_ccache(principal=None):
+    # Repoint to a new, in-memory credential cache.
+    os.environ['KRB5CCNAME'] = 'MEMORY:'
+    if principal:
+        ctx = k5.Context()
+        ccache = ctx.cc_default()
+        ccache.init_name(principal)
+
+
+def initialize_memory_ccache_from_client_keytab(reinit=False):
     # Repoint to a new, in-memory credential cache.
     os.environ['KRB5CCNAME'] = 'MEMORY:'
     ctx = k5.Context()
     ccache = ctx.cc_default()
-    ccache.init_name(principal)
+    if reinit:
+        ccache.destroy()
+        ccache = ctx.cc_default()
+    keytab = ctx.kt_client_default()
+    ccache.init_from_keytab(keytab)
 
 
-def add_credential_to_ccache(creds):
-    # pylint: disable=protected-access, too-many-locals
+def add_credential_to_ccache(creds, princ=None):
+    # pylint: disable=protected-access, too-many-locals, too-many-statements
     # all this should be abstracted away somewhere else.
     # This may be leaky. Consider kdestroy/re-init/re-ping zephyr servers.
     def json_name_bits_to_princ(ctx, realm, name):
@@ -44,6 +58,13 @@ def add_credential_to_ccache(creds):
             return base64.b64decode(data)
         return data
 
+    def verify_same_princ(client):
+        if princ:
+            client_name = client.unparse_name()
+            given_client_name = princ.encode('utf-8')
+            if client_name != given_client_name:
+                raise ValueError(f'Ticket for wrong client: {client_name} vs {given_client_name}')
+
     ctx = k5.Context()
     ccache = ctx.cc_default()
     kcreds = kc.krb5_creds()
@@ -52,6 +73,8 @@ def add_credential_to_ccache(creds):
     # Extract and massage the principals
     server = json_name_bits_to_princ(ctx, creds['srealm'], creds['sname'])
     client = json_name_bits_to_princ(ctx, creds['crealm'], creds['cname'])
+    verify_same_princ(client)
+
     tkt_server = json_name_bits_to_princ(ctx,
                                          creds['ticket']['realm'],
                                          creds['ticket']['sname'])
@@ -102,14 +125,27 @@ def add_credential_to_ccache(creds):
     # and finally, store the new cred in the ccache.
     k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds)
 
-def get_zephyr_creds(realm):
+
+def _get_zephyr_creds(realm):
+    context = k5.Context()
+    ccache = context.cc_default()
+    principal = ccache.get_principal()
+    zephyr = context.build_principal(realm, ['zephyr', 'zephyr'])
+    return ccache.get_credentials(principal, zephyr, cache_only=True)
+
+
+def get_zephyr_creds_dict(realm):
     try:
-        context = k5.Context()
-        ccache = context.cc_default()
-        principal = ccache.get_principal()
-        zephyr = context.build_principal(realm, ['zephyr', 'zephyr'])
-        creds = ccache.get_credentials(principal, zephyr, cache_only=True)
+        creds = _get_zephyr_creds(realm)
         creds_dict = creds.to_dict()
         return creds_dict
     except k5.Error:
         return {}
+
+
+def have_valid_zephyr_creds(realm):
+    try:
+        creds = _get_zephyr_creds(realm)
+        return creds.is_valid()
+    except k5.Error:
+        return False

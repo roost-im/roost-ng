@@ -1,7 +1,9 @@
+import base64
 import datetime
+import re
+import socket
+import struct
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from django.conf import settings
 from django.db import models, transaction
 import jwt
@@ -11,7 +13,7 @@ from . import secrets, utils
 
 class User(models.Model):
     principal = models.CharField(max_length=255, unique=True)
-    info = models.TextField(default='{}')
+    info = models.JSONField(default=dict)
     info_version = models.BigIntegerField(default=1)
     # TODO: add minimum token age or token generation to invalidate old tokens.
 
@@ -80,24 +82,13 @@ class User(models.Model):
     def is_anonymous(self):
         return self.id is None
 
-    @staticmethod
-    def _send_to_group(msg, group_name, wait_for_response=False):
-        channel_layer = get_channel_layer()
-        if wait_for_response:
-            channel_name = async_to_sync(channel_layer.new_channel)()
-            msg = dict(msg, _reply_to=channel_name)
-        async_to_sync(channel_layer.group_send)(group_name, msg)
-        if wait_for_response:
-            return async_to_sync(channel_layer.receive)(channel_name)
-        return None
-
     def send_to_user_process(self, msg, wait_for_response=False):
         group_name = utils.principal_to_user_process_group_name(self.principal)
-        return self._send_to_group(msg, group_name, wait_for_response)
+        return utils.send_to_group(group_name, msg, wait_for_response)
 
     def send_to_user_sockets(self, msg, wait_for_response=False):
         group_name = utils.principal_to_user_socket_group_name(self.principal)
-        return self._send_to_group(msg, group_name, wait_for_response)
+        return utils.send_to_group(group_name, msg, wait_for_response)
 
     class Meta:
         pass
@@ -118,6 +109,9 @@ class Subscription(models.Model):
         unique_together = [
             ['user', 'zrecipient', 'class_key', 'instance_key']
         ]
+
+
+RE_BASE_STR = re.compile(r'(?:un)*(.*?)(?:[.]d)*')
 
 
 class Message(models.Model):
@@ -150,7 +144,58 @@ class Message(models.Model):
     opcode = models.CharField(max_length=255, blank=True)
 
     signature = models.CharField(max_length=255)
-    message = models.BinaryField()
+    message = models.TextField()
+
+    def __str__(self):
+        return f'[{self.uid}] {self.class_key},{self.instance_key},{self.recipient if self.recipient else "*"}'
+
+    @classmethod
+    def from_notice(cls, notice, is_outgoing=False):
+        # Further needed arguments: direction, user?
+
+        def _d(octets: bytes) -> str:
+            # pylint: disable=protected-access
+            if notice._charset == b'UTF-8':
+                return octets.decode('utf-8')
+            if notice._charset == b'ISO-8859-1':
+                return octets.decode('latin-1')
+            for enc in ('ascii', 'utf-8', 'latin-1'):
+                try:
+                    return octets.decode(enc)
+                except UnicodeDecodeError:
+                    pass
+
+        msg = cls()
+        msg.zclass = _d(notice.cls)
+        msg.zinstance = _d(notice.instance)
+        msg.class_key = msg.zclass.casefold()
+        msg.instance_key = msg.zinstance.casefold()
+        msg.class_key_base = RE_BASE_STR.fullmatch(msg.class_key).group(1)
+        msg.instance_key_base = RE_BASE_STR.fullmatch(msg.instance_key).group(1)
+        msg.time = datetime.datetime.fromtimestamp(notice.time or notice.uid.time, datetime.timezone.utc)
+        msg.auth = notice.auth
+        msg.sender = _d(notice.sender)
+        msg.recipient = _d(notice.recipient)
+
+        msg.is_personal = bool(msg.recipient)
+        msg.is_outgoing = is_outgoing
+        if msg.is_personal:
+            msg.conversation = msg.recipient if is_outgoing else msg.sender
+
+        # Reconstruct the Zuid from its component parts and store it like roost would.
+        uid = socket.inet_aton(notice.uid.address.decode('ascii'))
+        uid_time = datetime.datetime.fromtimestamp(notice.uid.time, datetime.timezone.utc)
+        uid += struct.pack('!II', int(uid_time.timestamp()), int(uid_time.microsecond))
+        msg.uid = base64.b64encode(uid).decode('ascii')
+
+        msg.opcode = _d(notice.opcode)
+        if len(notice.fields) == 2:
+            msg.signature = _d(notice.fields[0])[:255]
+            msg.message = _d(notice.fields[1])
+        elif len(notice.fields) == 1:
+            msg.message = _d(notice.fields[0])
+
+        return msg
 
     class Meta:
         index_together = [
@@ -158,3 +203,31 @@ class Message(models.Model):
             ['class_key_base', 'instance_key_base'],
         ]
         ordering = ['id']
+
+
+class UserProcessState(models.Model):
+    """This class will be used to persist data the user process needs. The
+    `data` field format is defined by user_process.py. This table is
+    new to roost-ng and internal only, not to be exposed to clients.
+    """
+
+    user = models.OneToOneField('User', primary_key=True, on_delete=models.CASCADE, related_name='process_state')
+    data = models.JSONField()
+
+
+class ServerProcessState(models.Model):
+    """This class will be used to persist data the server process needs. The
+    `data` field format is defined by user_process.py. This table is
+    new to roost-ng and internal only, not to be exposed to clients.
+    """
+
+    data = models.JSONField()
+
+    def save(self, *args, **kwargs):
+        # pylint: disable=signature-differs
+        self.__class__.objects.exclude(id=self.id).delete()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        return cls.objects.last() or cls()

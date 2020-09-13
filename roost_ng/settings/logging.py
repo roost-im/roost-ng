@@ -19,5 +19,10 @@ LOGGING = {
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
             'propagate': False,
         },
+        'roost_backend': {
+            'handlers': ['console'],
+            'level': os.getenv('ROOST_BACKEND_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
     },
 }

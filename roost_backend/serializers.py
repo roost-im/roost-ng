@@ -4,7 +4,7 @@ import datetime
 
 from rest_framework import serializers
 
-from . import models
+from . import models, utils
 
 # pylint: disable=abstract-method
 # pylint complains about missing optional `create` and `update` methods in
@@ -29,6 +29,14 @@ class DateTimeAsMillisecondsField(serializers.Field):
 
     def to_internal_value(self, data):
         return datetime.datetime.fromtimestamp(data/1000, datetime.timezone.utc)
+
+
+class SealedMessageIdField(serializers.UUIDField):
+    def to_representation(self, value):
+        return super().to_representation(utils.seal_message_id(value))
+
+    def to_internal_value(self, data):
+        return utils.unseal_message_id(super().to_internal_value(data))
 
 
 # Kerberos Credential Serializers
@@ -154,14 +162,15 @@ SubscriptionSerializer._declared_fields['class'] = serializers.CharField(source=
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    id = SealedMessageIdField()
     time = DateTimeAsMillisecondsField()
     receive_time = DateTimeAsMillisecondsField()
-    message = serializers.SerializerMethodField()
+    # message = serializers.SerializerMethodField()
     instance = serializers.CharField(source='zinstance')
 
-    @staticmethod
-    def get_message(obj):
-        return obj.message.decode('utf-8')
+    # @staticmethod
+    # def get_message(obj):
+    #     return obj.message.decode('utf-8')
 
     class Meta:
         model = models.Message
@@ -175,11 +184,11 @@ MessageSerializer._declared_fields['class'] = serializers.CharField(source='zcla
 
 
 class OutgoingMessageSerializer(serializers.Serializer):
-    instance = serializers.CharField()
-    recipient = serializers.CharField()
-    opcode = serializers.CharField(default='')
-    signature = serializers.CharField(default='')
-    message = serializers.CharField()
+    instance = serializers.CharField(allow_blank=True)
+    recipient = serializers.CharField(allow_blank=True)
+    opcode = serializers.CharField(default='', allow_blank=True)
+    signature = serializers.CharField(default='', allow_blank=True)
+    message = serializers.CharField(allow_blank=True)
 
 
 # class is a reserved word, so let's do this the hard way.

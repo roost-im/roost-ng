@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics, permissions, status
 
-from . import filters, models, serializers
+from . import filters, models, serializers, utils
 
 COMMON_DECORATORS = [vary_on_headers('Authorization'), never_cache]
 
@@ -98,7 +98,7 @@ class SubscribeView(APIView):
     serializer_class = serializers.SubscriptionSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data, many=True, context={'request': request})
+        serializer = self.serializer_class(data=request.data['subscriptions'], many=True, context={'request': request})
         serializer.is_valid(raise_exception=True)
         vdata = serializer.validated_data
 
@@ -135,7 +135,7 @@ class MessageView(generics.ListAPIView):
         reverse = request.query_params.get('reverse', False)
         inclusive = request.query_params.get('inclusive', False)
         offset = request.query_params.get('offset')
-        limit = int(request.query_params.get('limit', 0))
+        limit = int(request.query_params.get('count', 0))
 
         # clamp limit
         if limit < 1:
@@ -144,8 +144,7 @@ class MessageView(generics.ListAPIView):
             limit = 100
 
         if offset:
-            offset = int(offset)
-            # TODO: seal/unseal offset
+            offset = utils.unseal_message_id(offset)
             # TODO: Double check this
             if inclusive and reverse:
                 qs = qs.filter(id__lte=offset)
@@ -161,6 +160,12 @@ class MessageView(generics.ListAPIView):
 
         qs = filters.MessageFilter(**request.query_params).apply_to_queryset(qs)
         return qs[:limit]
+
+    def list(self, request, *args, **kwargs):
+        return Response({
+            'messages': self.serializer_class(self.get_queryset(), many=True).data,
+            'isDone': True,
+        })
 
 
 @method_decorator(COMMON_DECORATORS, name='dispatch')
@@ -179,15 +184,17 @@ class MessageByTimeView(APIView):
 @method_decorator(COMMON_DECORATORS, name='dispatch')
 class ZephyrCredsView(APIView):
     def get(self, request):
-        # This should find out if we need to refresh the zephyr
-        # credentials for this user and let them know. For now, the
-        # answer is no, everything is fine.
+        response = request.user.send_to_user_process({
+            'type': 'have_valid_credentials',
+        }, wait_for_response=True)
+
         return Response({
-            'needsRefresh': False,
+            'needsRefresh': not response['valid'],
         })
 
     def post(self, request):
         # Accept, validate, and then promptly ignore credentials.
+        # If they were included, they auth layer pushed them to the user process.
         ret = request.zephyr_credentials is not None
         return Response({
             'refreshed': ret,
@@ -199,7 +206,7 @@ class ZWriteView(APIView):
     serializer_class = serializers.OutgoingMessageSerializer
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data['message'])
         serializer.is_valid(raise_exception=True)
         response = request.user.send_to_user_process({
             'type': 'zwrite',
@@ -220,10 +227,8 @@ class ZWriteView(APIView):
 # app.get('/v1/messages', requireUser
 # app.get('/v1/bytime', requireUser
 # app.post('/v1/zwrite', requireUser
-# Stubbed:
 # app.get('/v1/zephyrcreds', requireUser
 # app.post('/v1/zephyrcreds', requireUser
-# To do:
 
 # Also, a websocket at /v1/socket/websocket
 # message types:
