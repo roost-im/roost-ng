@@ -18,8 +18,6 @@ _application = get_default_application()
 
 def application(scope):
     if scope['type'] == 'websocket':
-        from pprint import pprint
-        pprint(scope)
         # Daphne does not deal with the daphne-root-path header for websockets,
         # so we will deal with it here.
         headers = dict(scope['headers'])
