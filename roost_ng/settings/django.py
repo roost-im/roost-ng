@@ -14,9 +14,12 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+from . import config
+cfg = config.get_config_for_module(__name__)
 
-ALLOWED_HOSTS = ['*']
+DEBUG = cfg.get('debug', False)
+
+ALLOWED_HOSTS = cfg.get('allowed_hosts', ['*'])
 
 
 # Application definition
