@@ -2,6 +2,7 @@ import datetime
 
 from asgiref.sync import async_to_sync
 import channels.layers
+from django.conf import settings
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -50,7 +51,9 @@ class AuthView(APIView):
             return Response("Roost-ng does not support multi-step GSS handshakes.", status=status.HTTP_400_BAD_REQUEST)
 
         principal = str(ctx.initiator_name)
-        if serializer.validated_data['create_user']:
+        if (serializer.validated_data['create_user']
+                and settings.ROOST_ALLOW_USER_CREATION
+                and principal not in settings.ROOST_USER_CREATION_BLACKLIST):
             with transaction.atomic():
                 user, created = models.User.objects.get_or_create(principal=principal)
             if created:
