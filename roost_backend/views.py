@@ -132,8 +132,8 @@ class MessageView(generics.ListAPIView):
         request = self.request
         qs = request.user.message_set.all()
 
-        reverse = request.query_params.get('reverse', False)
-        inclusive = request.query_params.get('inclusive', False)
+        reverse = int(request.query_params.get('reverse', False))
+        inclusive = int(request.query_params.get('inclusive', False))
         offset = request.query_params.get('offset')
         limit = int(request.query_params.get('count', 0))
 
