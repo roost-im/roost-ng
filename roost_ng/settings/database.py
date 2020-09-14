@@ -14,5 +14,4 @@ DATABASES = {
 }
 
 # database settings from config; may override above definition.
-if 'databases' in config.config:
-    DATABASES.update(config.config['databases'])
+DATABASES.update(config.get_config_for_module(__name__))
