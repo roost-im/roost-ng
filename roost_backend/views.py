@@ -140,8 +140,8 @@ class MessageView(generics.ListAPIView):
         # clamp limit
         if limit < 1:
             limit = 1
-        elif limit > 100:
-            limit = 100
+        elif limit > 128:
+            limit = 128
 
         if offset:
             offset = utils.unseal_message_id(offset)
