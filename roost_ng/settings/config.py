@@ -9,7 +9,7 @@ config = {}
 try:
     with open(configfile, 'r') as f:
         config = yaml.safe_load(f)
-except FileNotFoundError:
+except OSError:
     pass
 
 def get_config_for_module(mod):
