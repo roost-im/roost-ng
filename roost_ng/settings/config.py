@@ -12,6 +12,7 @@ try:
 except OSError:
     pass
 
+
 def get_config_for_module(mod):
     if isinstance(mod, str):
         mod = mod.rsplit('.', 1)[-1]

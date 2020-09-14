@@ -16,6 +16,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'roost_ng.settings')
 django.setup()
 _application = get_default_application()
 
+
 def application(scope):
     if scope['type'] == 'websocket':
         # Daphne does not deal with the daphne-root-path header for websockets,
