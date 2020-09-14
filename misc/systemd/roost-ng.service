@@ -1,0 +1,15 @@
+[Unit]
+Description=roost-ng
+[Service]
+Restart=on-failure
+StandardOutput=null
+StandardError=null
+User=roost-ng
+WorkingDirectory=/opt/roost-ng/
+
+ExecStart=/opt/roost-ng/ve/bin/python ./roost-ng/misc/run_with_daphne.py \
+  -u roost-ng.sock \
+  roost_ng.asgi:application
+
+[Install]
+WantedBy=multi-user.target
