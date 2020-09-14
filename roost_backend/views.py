@@ -1,6 +1,7 @@
 import datetime
 
 from django.db import transaction
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.decorators.vary import vary_on_headers
@@ -43,7 +44,7 @@ class AuthView(APIView):
             user = models.User.objects.filter(principal=principal).first()
 
         if user is None:
-            return Response({'user not registered': principal}, status=status.HTTP_401_UNAUTHORIZED)
+            return HttpResponse('User does not exist', status=status.HTTP_403_FORBIDDEN)
 
         resp = self.serializer_class({
             'gss_token': gss_token,
