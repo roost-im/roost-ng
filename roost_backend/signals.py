@@ -78,15 +78,14 @@ def resync_subscriber_on_subscription_delete(sender, instance, **_kwargs):
 def start_new_user_subscriber(sender, instance, created, **_kwargs):
     # pylint: disable=unused-argument
     if created:
-        instance.add_default_subscriptions()
-        transaction.on_commit(functools.partial(
-            utils.send_to_group,
+        utils.send_to_group(
             'OVERSEER',
             {
                 'type': 'add_user',
                 'principal': instance.principal,
-            },
-            wait_for_response=True))
+                'uid': instance.id,
+            })
+        instance.add_default_subscriptions()
 
 
 @receiver(post_delete, sender=models.User)

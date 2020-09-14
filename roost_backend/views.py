@@ -1,5 +1,7 @@
 import datetime
 
+from asgiref.sync import async_to_sync
+import channels.layers
 from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -26,6 +28,16 @@ class AuthView(APIView):
             return Response(f'{type(exc).__name__}: {exc}', status=status.HTTP_400_BAD_REQUEST)
         return super().handle_exception(exc)
 
+    @staticmethod
+    async def wait_for_user_process(principal):
+        channel_layer = channels.layers.get_channel_layer()
+        channel_name = utils.principal_to_user_subscriber_announce_channel(principal)
+
+        while True:
+            message = await channel_layer.receive(channel_name)
+            if message.get('principal') == principal:
+                return
+
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -39,7 +51,10 @@ class AuthView(APIView):
 
         principal = str(ctx.initiator_name)
         if serializer.validated_data['create_user']:
-            user, _created = models.User.objects.get_or_create(principal=principal)
+            with transaction.atomic():
+                user, created = models.User.objects.get_or_create(principal=principal)
+            if created:
+                async_to_sync(self.wait_for_user_process)(user.principal)
         else:
             user = models.User.objects.filter(principal=principal).first()
 

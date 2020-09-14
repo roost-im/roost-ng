@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import uuid
 
@@ -15,6 +16,10 @@ def principal_to_user_subscriber_group_name(princ):
 
 def principal_to_user_socket_group_name(princ):
     return kerberos.principal_to_group_name(princ, 'WS')
+
+
+def principal_to_user_subscriber_announce_channel(princ):
+    return kerberos.principal_to_group_name(princ, 'UA')
 
 
 # Yes, for sealing and unsealing we are using AES in ECB mode.
@@ -51,12 +56,21 @@ def notice_to_zuid_key(notice):
     )
 
 
-def send_to_group(group_name, msg, wait_for_response=False):
+async def _send_to_group(group_name, msg, wait_for_response=False):
     channel_layer = get_channel_layer()
+
     if wait_for_response:
-        channel_name = async_to_sync(channel_layer.new_channel)()
+        channel_name = await channel_layer.new_channel()
         msg = dict(msg, _reply_to=channel_name)
-    async_to_sync(channel_layer.group_send)(group_name, msg)
-    if wait_for_response:
-        return async_to_sync(channel_layer.receive)(channel_name)
+
+        ret = await asyncio.gather(
+            channel_layer.receive(channel_name),
+            channel_layer.group_send(group_name, msg))
+        return ret[0]
+
+    await channel_layer.group_send(group_name, msg)
     return None
+
+
+def send_to_group(group_name, msg, wait_for_response=False):
+    return async_to_sync(_send_to_group)(group_name, msg, wait_for_response)

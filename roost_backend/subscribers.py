@@ -57,24 +57,21 @@ class _ChannelLayerMixin:
         raise NotImplementedError()
 
     async def channel_layer_handler(self):
-        try:
-            # Initialize channel layer.
-            self.channel_layer = channels.layers.get_channel_layer()
-            self.channel_name = await self.channel_layer.new_channel()
-            self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
+        # Initialize channel layer.'
+        self.channel_layer = channels.layers.get_channel_layer()
+        self.channel_name = await self.channel_layer.new_channel()
+        self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
 
-            # Subscribe to groups
-            for group_name in self.groups:
-                await self.channel_layer.group_add(group_name, self.channel_name)
+        # Subscribe to groups
+        for group_name in self.groups:
+            await self.channel_layer.group_add(group_name, self.channel_name)
 
-            # Wait for and dispatch messages until we get cancelled.
-            while True:
-                try:
-                    await channels.utils.await_many_dispatch([self.channel_receive], self.dispatch)
-                except ValueError as exc:
-                    _LOGGER.error('Dispatch failed: %s', exc)
-        except asyncio.CancelledError:
-            pass
+        # wait for and dispatch messages until we get cancelled.
+        while not self.stop_event.is_set():
+            try:
+                await channels.utils.await_many_dispatch([self.channel_receive], self.dispatch)
+            except ValueError as exc:
+                _LOGGER.error('Dispatch failed: %s', exc)
 
     async def dispatch(self, message):
         # Let's use the same dispatching mechanism that django channels consumers use.
@@ -130,45 +127,41 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         zephyr.init()
         self.z_initialized.set()
 
-    async def _sub(self, zsub, sub):
-        async with self.zephyr_lock:
-            zsub.add(sub)
-
-    def resync_subs(self):
-        if not self.z_initialized.is_set():
-            return
-
-        _LOGGER.debug('[%s] resyncing subscriptions...', self.log_prefix)
-        zsub = zephyr.Subscriptions()
-        zsub.cleanup = False
-        zsub.resync()
-
+    @database_sync_to_async
+    def get_subs_to_resync(self):
         subs_qs = self.get_subs_qs()
-
-        for sub in set(subs_qs.values_list('class_key', 'instance_key', 'zrecipient')):
-            _LOGGER.debug(' %s', sub)
-            async_to_sync(self._sub)(zsub, sub)
-
-        _LOGGER.debug('[%s] %s', self.log_prefix, zsub)
-        # TODO: check for extra subs and get rid of them.
-
-        _LOGGER.debug('[%s] subscribing done.', self.log_prefix)
+        return set(subs_qs.values_list('class_key', 'instance_key', 'zrecipient'))
 
     async def resync_handler(self):
         _LOGGER.debug('[%s] resync task started.', self.log_prefix)
+        zsub = None
         try:
             while True:
                 await self.resync_event.wait()
                 self.resync_event.clear()
                 _LOGGER.debug('[%s] resync task triggered.', self.log_prefix)
-                await database_sync_to_async(self.resync_subs)()
+                if not self._have_valid_zephyr_creds():
+                    _LOGGER.debug('[%s] resync skipped due to lack of credentials.', self.log_prefix)
+                    continue
+
+                if zsub is None:
+                    zsub = zephyr.Subscriptions()
+
+                async with self.zephyr_lock:
+                    zsub.resync()
+
+                subs = await self.get_subs_to_resync()
+                for sub in subs:
+                    async with self.zephyr_lock:
+                        zsub.add(sub)
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] resync task cancelled.', self.log_prefix)
+            raise
 
     async def zephyr_handler(self):
         self.zephyr_lock = asyncio.Lock()
         self.resync_event = asyncio.Event()
-        resync_task = asyncio.create_task(self.resync_handler())
+        asyncio.create_task(self.resync_handler())
         _LOGGER.debug('[%s] zephyr handler started.', self.log_prefix)
         try:
             await self.load_user_data()
@@ -214,9 +207,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                 await database_sync_to_async(msg.save)()
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] zephyr handler cancelled.', self.log_prefix)
-            await self.save_user_data()
-            resync_task.cancel()
-            await resync_task
+            raise
         finally:
             _LOGGER.debug('[%s] zephyr handler done.', self.log_prefix)
 
@@ -253,7 +244,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         if self.principal is None:
             # The server process always has credentials; if we did not load state, initialize things now.
             await sync_to_async(self.zinit)()
-            await database_sync_to_async(self.resync_subs)()
+            self.resync_event.set()
 
     @database_sync_to_async
     def _save_user_data(self, data):
@@ -401,20 +392,20 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
 
     def start(self):
         setproctitle.setproctitle('roost:OVERSEER')
-        user_qs = django.apps.apps.get_model('roost_backend', 'User').objects.all()
-        self.user_tasks = {
-            principal: None
-            for principal in user_qs.values_list('principal', flat=True)
-        }
         async_to_sync(self.oversee)()
+
+    @database_sync_to_async
+    def get_users(self):
+        # pylint: disable=no-self-use
+        return list(django.apps.apps.get_model('roost_backend', 'User').objects.all().values_list('id', 'principal'))
 
     async def oversee(self):
         _LOGGER.debug('[OVERSEER] starting...')
         channel_task = asyncio.create_task(self.channel_layer_handler())
-        server_task = asyncio.create_task(self.server_process_watcher())
-        for princ, task in self.user_tasks.items():
-            if task is None:
-                self.user_tasks[princ] = asyncio.create_task(self.user_process_watcher(princ))
+        asyncio.create_task(self.server_process_watcher())
+        user_list = await self.get_users()
+        for (uid, principal) in user_list:
+            self.user_tasks[principal] = asyncio.create_task(self.user_process_watcher(principal, uid))
 
         # We could just wait for the async tasks to finish, but then
         # we would not be waiting on any tasks for users created after
@@ -422,11 +413,14 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
         _LOGGER.debug('[OVERSEER] waiting for stop event...')
         await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
         _LOGGER.debug('[OVERSEER] received stop event...')
-        tasks = [server_task]
-        tasks.extend(task for task in self.user_tasks.values() if task is not None)
-        await asyncio.wait(tasks)
+        tasks = [task for task in self.user_tasks.values() if task is not None]
+        if tasks:
+            await asyncio.wait(tasks)
         channel_task.cancel()
-        await channel_task
+        try:
+            await channel_task
+        except asyncio.CancelledError:
+            pass
         _LOGGER.debug('[OVERSEER] done.')
 
     async def server_process_watcher(self):
@@ -435,9 +429,9 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
-    async def user_process_watcher(self, principal, started=None):
+    async def user_process_watcher(self, principal, uid):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=UserSubscriber, args=(principal, self.stop_event, started))
+            proc = mp.Process(target=UserSubscriber, args=(principal, uid, self.stop_event))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
@@ -445,17 +439,11 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     async def add_user(self, message):
         # {'type': 'add_user', 'principal': '<principal of new user>'}
         # Spawns user process for user if not already running.
-        reply_channel = message.pop('_reply_to', None)
         princ = message['principal']
+        uid = message['uid']
 
         if princ not in self.user_tasks:
-            started = mp.Event() if reply_channel else None
-            self.user_tasks[princ] = asyncio.create_task(self.user_process_watcher(princ, started))
-            if started:
-                await sync_to_async(started.wait)()
-                await self.channel_layer.send(reply_channel, {})
-        elif reply_channel:
-            await self.channel_layer.send(reply_channel, {})
+            self.user_tasks[princ] = asyncio.create_task(self.user_process_watcher(princ, uid))
 
     async def del_user(self, message):
         # {'type': 'del_user', 'principal': '<principal of deleted user>'}
@@ -471,12 +459,11 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     """Kerberos and zephyr are not particularly threadsafe, so each user
     will have their own process."""
 
-    def __init__(self, principal, stop_event, started_event, start=True):
+    def __init__(self, principal, uid, stop_event, start=True):
         super().__init__()
         self._principal = principal
-        self.uid = None
+        self.uid = uid
         self.stop_event = stop_event
-        self.started_event = started_event
         if start:
             self.start()
 
@@ -502,22 +489,32 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     def start(self):
         _LOGGER.debug('%s starting...', self)
         setproctitle.setproctitle(f'roost:{self.principal}')
-        self.uid = django.apps.apps.get_model('roost_backend', 'User').objects.get(principal=self.principal).id
         self._initialize_memory_ccache()
         async_to_sync(self.run)()
 
     async def run(self):
         zephyr_task = asyncio.create_task(self.zephyr_handler())
         channel_task = asyncio.create_task(self.channel_layer_handler())
-        if self.started_event:
-            self.started_event.set()
+        while self.channel_layer is None:
+            await asyncio.sleep(0)
+        # Announce our activation.
+        _LOGGER.debug('[%s] announcing activation...', self.log_prefix)
+        await self.channel_layer.send(utils.principal_to_user_subscriber_announce_channel(self.principal), {
+            'type': 'announce_user_subscriber',
+            'principal': self.principal,
+        })
+        _LOGGER.debug('[%s] announced.', self.log_prefix)
+        await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
+        zephyr_task.cancel()
+        channel_task.cancel()
         try:
-            await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
-        finally:
-            channel_task.cancel()
-            zephyr_task.cancel()
             await zephyr_task
+        except asyncio.CancelledError:
+            pass
+        try:
             await channel_task
+        except asyncio.CancelledError:
+            pass
 
     # Start of Channel Layer message handlers
     async def inject_credentials(self, message):
@@ -570,10 +567,14 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     async def run(self):
         zephyr_task = asyncio.create_task(self.zephyr_handler())
         channel_task = asyncio.create_task(self.channel_layer_handler())
+        await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
+        zephyr_task.cancel()
+        channel_task.cancel()
         try:
-            await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
-        finally:
-            channel_task.cancel()
-            zephyr_task.cancel()
             await zephyr_task
+        except asyncio.CancelledError:
+            pass
+        try:
             await channel_task
+        except asyncio.CancelledError:
+            pass
