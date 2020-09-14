@@ -54,6 +54,10 @@ class User(models.Model):
             return triple['zclass'], triple['zinstance'], triple['zrecipient']
         return [self.add_subscription(*_parse_triple(triple)) for triple in triples]
 
+    @transaction.atomic
+    def add_default_subscriptions(self):
+        self.add_subscription('message', '*', self.principal)
+
     def remove_subscription(self, klass, instance, recipient):
         class_key = klass.casefold()
         instance_key = instance.casefold()

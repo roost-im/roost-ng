@@ -435,9 +435,9 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
-    async def user_process_watcher(self, principal):
+    async def user_process_watcher(self, principal, started=None):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=UserSubscriber, args=(principal, self.stop_event))
+            proc = mp.Process(target=UserSubscriber, args=(principal, self.stop_event, started))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
@@ -445,9 +445,17 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     async def add_user(self, message):
         # {'type': 'add_user', 'principal': '<principal of new user>'}
         # Spawns user process for user if not already running.
+        reply_channel = message.pop('_reply_to', None)
         princ = message['principal']
+
         if princ not in self.user_tasks:
-            self.user_tasks[princ] = asyncio.create_task(self.user_process_watcher(princ))
+            started = mp.Event() if reply_channel else None
+            self.user_tasks[princ] = asyncio.create_task(self.user_process_watcher(princ, started))
+            if started:
+                await sync_to_async(started.wait)()
+                await self.channel_layer.send(reply_channel, {})
+        elif reply_channel:
+            await self.channel_layer.send(reply_channel, {})
 
     async def del_user(self, message):
         # {'type': 'del_user', 'principal': '<principal of deleted user>'}
@@ -463,11 +471,12 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     """Kerberos and zephyr are not particularly threadsafe, so each user
     will have their own process."""
 
-    def __init__(self, principal, stop_event, start=True):
+    def __init__(self, principal, stop_event, started_event, start=True):
         super().__init__()
         self._principal = principal
         self.uid = None
         self.stop_event = stop_event
+        self.started_event = started_event
         if start:
             self.start()
 
@@ -500,6 +509,8 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     async def run(self):
         zephyr_task = asyncio.create_task(self.zephyr_handler())
         channel_task = asyncio.create_task(self.channel_layer_handler())
+        if self.started_event:
+            self.started_event.set()
         try:
             await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
         finally:
