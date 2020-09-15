@@ -56,6 +56,17 @@ class _ChannelLayerMixin:
     def groups(self):
         raise NotImplementedError()
 
+    async def channel_layer_resubscribe(self):
+        try:
+            while True:
+                for group_name in self.groups:
+                    await self.channel_layer.group_add(group_name, self.channel_name)
+                await asyncio.sleep(self.channel_layer.group_expiry / 2)
+        except asyncio.CancelledError:
+            for group_name in self.groups:
+                await self.channel_layer.group_discard(group_name, self.channel_name)
+            raise
+
     async def channel_layer_handler(self):
         # Initialize channel layer.'
         self.channel_layer = channels.layers.get_channel_layer()
@@ -63,8 +74,8 @@ class _ChannelLayerMixin:
         self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
 
         # Subscribe to groups
-        for group_name in self.groups:
-            await self.channel_layer.group_add(group_name, self.channel_name)
+        asyncio.create_task(self.channel_layer_resubscribe())
+        await asyncio.sleep(0)
 
         # wait for and dispatch messages until we get cancelled.
         while not self.stop_event.is_set():
