@@ -147,7 +147,7 @@ class UnsubscribeView(APIView):
 class MessageView(generics.ListAPIView):
     serializer_class = serializers.MessageSerializer
 
-    def get_queryset(self):
+    def get_queryset_and_done(self):
         request = self.request
         qs = request.user.message_set.all()
 
@@ -178,12 +178,14 @@ class MessageView(generics.ListAPIView):
             qs = qs.reverse()
 
         qs = filters.MessageFilter(**request.query_params).apply_to_queryset(qs)
-        return qs[:limit]
+        is_done = qs.count() <= limit
+        return qs[:limit], is_done
 
     def list(self, request, *args, **kwargs):
+        qs, is_done = self.get_queryset_and_done()
         return Response({
-            'messages': self.serializer_class(self.get_queryset(), many=True).data,
-            'isDone': True,
+            'messages': self.serializer_class(qs, many=True).data,
+            'isDone': is_done,
         })
 
 
