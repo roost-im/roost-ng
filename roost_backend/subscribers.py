@@ -57,15 +57,10 @@ class _ChannelLayerMixin:
         raise NotImplementedError()
 
     async def channel_layer_resubscribe(self):
-        try:
-            while True:
-                for group_name in self.groups:
-                    await self.channel_layer.group_add(group_name, self.channel_name)
-                await asyncio.sleep(self.channel_layer.group_expiry / 2)
-        except asyncio.CancelledError:
+        while True:
             for group_name in self.groups:
-                await self.channel_layer.group_discard(group_name, self.channel_name)
-            raise
+                await self.channel_layer.group_add(group_name, self.channel_name)
+            await asyncio.sleep(self.channel_layer.group_expiry / 2)
 
     async def channel_layer_handler(self):
         # Initialize channel layer.'
