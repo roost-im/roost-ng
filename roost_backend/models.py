@@ -195,11 +195,43 @@ class Message(models.Model):
         msg.uid = base64.b64encode(uid).decode('ascii')
 
         msg.opcode = _d(notice.opcode)
-        if len(notice.fields) == 2:
-            msg.signature = _d(notice.fields[0])[:255]
-            msg.message = _d(notice.fields[1])
-        elif len(notice.fields) == 1:
-            msg.message = _d(notice.fields[0])
+
+        try:
+            # Deal with well known weird format strings.
+            if notice.format == ('@center(@bold(NOC Message))\n\n@bold(Sender:) $1 <$sender>\n'
+                                 '@bold(Time:  ) $time\n\n@italic($opcode service on $instance $3.) $4\n'):
+                # NOC messages are funny
+                msg.message = (f'{msg.opcode} service on {msg.zinstance} {notice.fields[2]}\n'
+                               f'{notice.fields[3]}')
+            elif notice.format == 'New transaction [$1] entered in $2\nFrom: $3 ($5)\nSubject: $4':
+                # Discuss messages are funny, 1 of 2
+                msg.message = (f'New transaction [{notice.fields[0]}] entered in {notice.fields[1]}\n'
+                               f'From: {notice.fields[2]} ({notice.fields[4]})\n'
+                               f'Subject: {notice.fields[3]}')
+
+            elif notice.format == 'New transaction [$1] entered in $2\nFrom: $3\nSubject: $4':
+                # Discuss messages are funny, 2 of 2
+                msg.message = (f'New transaction [{notice.fields[0]}] entered in {notice.fields[1]}\n'
+                               f'From: {notice.fields[2]}\n'
+                               f'Subject: {notice.fields[3]}')
+            elif notice.format == ('MOIRA $instance on $fromhost:\n $message\n'):
+                # Moira messages are funny
+                addr = notice.uid.address.decode('ascii')
+                try:
+                    hostname = socket.gethostbyaddr(addr)[0]
+                except socket.herror:
+                    hostname = addr
+                msg.message = (f'MOIRA {msg.zinstance} on {hostname}:\n'
+                               f' {notice.fields[0]}')
+        except IndexError:
+            pass
+
+        if not msg.message:
+            if len(notice.fields) == 2:
+                msg.signature = _d(notice.fields[0])[:255]
+                msg.message = _d(notice.fields[1])
+            elif len(notice.fields) == 1:
+                msg.message = _d(notice.fields[0])
 
         return msg
 
