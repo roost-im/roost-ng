@@ -141,7 +141,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         if request and request.user:
             if not any([value in ('', '*', request.user.principal),
                         value.startswith('@'),
-                        value.startswith('*@')]):
+                        value.startswith('*@'),
+                        value.lower() == '%me%']):
                 raise serializers.ValidationError(
                     f'Invalid recipient [{value}] for subscription by user [{request.user.principal}]')
         return value

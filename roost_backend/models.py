@@ -36,9 +36,11 @@ class User(models.Model):
         }
 
     def add_subscription(self, klass, instance, recipient):
-        if recipient == '*':
-            recipient = ''
-        if recipient not in (self.principal, ''):
+        if recipient.lower() == '%me%':
+            recipient = self.principal
+        if recipient.startswith('*'):
+            recipient = recipient[1:]
+        if recipient not in (self.principal, '') and not recipient.startswith('@'):
             raise ValueError(f'Bad recipient: {recipient}')
         class_key = klass.casefold()
         instance_key = instance.casefold()
