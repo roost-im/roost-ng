@@ -162,7 +162,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                 for sub in subs:
                     async with self.zephyr_lock:
                         zsubs.add(sub)
-                    good_subs.add(zsubs._fixTuple(sub))
+                    good_subs.add(zsubs._fixTuple(sub))  # pylint: disable=protected-access
 
                 for sub in zsubs - good_subs:
                     async with self.zephyr_lock:
