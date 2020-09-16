@@ -118,8 +118,11 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         utils.kerberos.initialize_memory_ccache(self.principal)
 
     def _add_credential_to_ccache(self, creds):
+        _LOGGER.debug('[%s] injecting credentials.', self.log_prefix)
         utils.kerberos.add_credential_to_ccache(creds, self.principal)
+        _LOGGER.debug('[%s] (re)initializing zephyr.', self.log_prefix)
         self.zinit()
+        _LOGGER.debug('[%s] asking for subs resync.', self.log_prefix)
         self.resync_event.set()
 
     @staticmethod
@@ -151,11 +154,14 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                     continue
 
                 if self._zsubs is None:
+                    _LOGGER.debug('[%s] instantiating subs object.', self.log_prefix)
                     self._zsubs = zephyr.Subscriptions()
                     self._zsubs.cleanup = False  # Don't cancel subs on delete.
 
                 async with self.zephyr_lock:
+                    _LOGGER.debug('[%s] resyncing subs object with libzephyr.', self.log_prefix)
                     self._zsubs.resync()
+                    _LOGGER.debug('[%s] resync got %i subs.', self.log_prefix, len(self._zsubs))
 
                 subs = await self.get_subs_to_resync()
                 good_subs = set()
@@ -231,9 +237,10 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         if self.principal is None:
             # Server process
             obj = django.apps.apps.get_model('roost_backend', 'ServerProcessState').load()
-            return obj.data
-        obj = django.apps.apps.get_model('roost_backend', 'UserProcessState').objects.filter(
-            user__principal=self.principal).first()
+        else:
+            obj = django.apps.apps.get_model('roost_backend', 'UserProcessState').objects.filter(
+                user__principal=self.principal).first()
+        _LOGGER.debug('[%s] user data: %s', self.log_prefix, obj)
         if obj:
             return obj.data
         return None
