@@ -101,6 +101,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         self.zephyr_lock = None
         self.resync_event = None
         self.waiting_for_acks = {}
+        self._zsubs = None
 
     @property
     def principal(self):
@@ -140,7 +141,6 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
 
     async def resync_handler(self):
         _LOGGER.debug('[%s] resync task started.', self.log_prefix)
-        zsubs = None
         try:
             while True:
                 await self.resync_event.wait()
@@ -150,23 +150,23 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                     _LOGGER.debug('[%s] resync skipped due to lack of credentials.', self.log_prefix)
                     continue
 
-                if zsubs is None:
-                    zsubs = zephyr.Subscriptions()
-                    zsubs.cleanup = False  # Don't cancel subs on delete.
+                if self._zsubs is None:
+                    self._zsubs = zephyr.Subscriptions()
+                    self._zsubs.cleanup = False  # Don't cancel subs on delete.
 
                 async with self.zephyr_lock:
-                    zsubs.resync()
+                    self._zsubs.resync()
 
                 subs = await self.get_subs_to_resync()
                 good_subs = set()
                 for sub in subs:
                     async with self.zephyr_lock:
-                        zsubs.add(sub)
-                    good_subs.add(zsubs._fixTuple(sub))  # pylint: disable=protected-access
+                        self._zsubs.add(sub)
+                    good_subs.add(self._zsubs._fixTuple(sub))  # pylint: disable=protected-access
 
-                for sub in zsubs - good_subs:
+                for sub in self._zsubs - good_subs:
                     async with self.zephyr_lock:
-                        zsubs.remove(sub)
+                        self._zsubs.remove(sub)
 
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] resync task cancelled.', self.log_prefix)
@@ -339,6 +339,20 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
 
     async def resync_subscriptions(self, _message):
         self.resync_event.set()
+
+    async def retrieve_subscriptions(self, message):
+        # This is a debugging endpoint to query for the set of subs held by this subscriber.
+        _LOGGER.debug('[%s] retrieving subscriptions...', self.log_prefix)
+        reply_channel = message.pop('_reply_to')
+        ret = set()
+        if reply_channel and self.z_initialized.is_set():
+            async with self.zephyr_lock:
+                # While this does not actually call libzephyr, we don't want subs changing out from
+                # under us.
+                ret.update(tuple(elt.decode('utf-8') for elt in sub) for sub in self._zsubs)
+        _LOGGER.debug('[%s] retrieved %i subscriptions.', self.log_prefix, len(ret))
+        if reply_channel:
+            await self.channel_layer.send(reply_channel, {'subscriptions': list(ret)})
     # End message handlers
 
 
