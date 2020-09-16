@@ -25,7 +25,7 @@ class Base64Field(serializers.Field):
 
 class DateTimeAsMillisecondsField(serializers.Field):
     def to_representation(self, value):
-        return int(value.timestamp()) * 1000
+        return value.timestamp() * 1000
 
     def to_internal_value(self, data):
         return datetime.datetime.fromtimestamp(data/1000, datetime.timezone.utc)
