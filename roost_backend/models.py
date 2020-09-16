@@ -196,25 +196,29 @@ class Message(models.Model):
 
         msg.opcode = _d(notice.opcode)
 
+        def get_field(i):
+            """Zephyr fields are one-indexed in formatting."""
+            return _d(notice.fields[i-1])
+
         try:
             # Deal with well known weird format strings.
-            if notice.format == ('@center(@bold(NOC Message))\n\n@bold(Sender:) $1 <$sender>\n'
-                                 '@bold(Time:  ) $time\n\n@italic($opcode service on $instance $3.) $4\n'):
+            if notice.format == (b'@center(@bold(NOC Message))\n\n@bold(Sender:) $1 <$sender>\n'
+                                 b'@bold(Time:  ) $time\n\n@italic($opcode service on $instance $3.) $4\n'):
                 # NOC messages are funny
-                msg.message = (f'{msg.opcode} service on {msg.zinstance} {notice.fields[2]}\n'
-                               f'{notice.fields[3]}')
-            elif notice.format == 'New transaction [$1] entered in $2\nFrom: $3 ($5)\nSubject: $4':
+                msg.message = (f'{msg.opcode} service on {msg.zinstance} {get_field(3)}\n'
+                               f'{get_field(4)}')
+            elif notice.format == b'New transaction [$1] entered in $2\nFrom: $3 ($5)\nSubject: $4':
                 # Discuss messages are funny, 1 of 2
-                msg.message = (f'New transaction [{notice.fields[0]}] entered in {notice.fields[1]}\n'
-                               f'From: {notice.fields[2]} ({notice.fields[4]})\n'
-                               f'Subject: {notice.fields[3]}')
+                msg.message = (f'New transaction [{get_field(1)}] entered in {get_field(2)}\n'
+                               f'From: {get_field(3)} ({get_field(5)})\n'
+                               f'Subject: {get_field(4)}')
 
-            elif notice.format == 'New transaction [$1] entered in $2\nFrom: $3\nSubject: $4':
+            elif notice.format == b'New transaction [$1] entered in $2\nFrom: $3\nSubject: $4':
                 # Discuss messages are funny, 2 of 2
-                msg.message = (f'New transaction [{notice.fields[0]}] entered in {notice.fields[1]}\n'
-                               f'From: {notice.fields[2]}\n'
-                               f'Subject: {notice.fields[3]}')
-            elif notice.format == ('MOIRA $instance on $fromhost:\n $message\n'):
+                msg.message = (f'New transaction [{get_field(1)}] entered in {get_field(2)}\n'
+                               f'From: {get_field(3)}\n'
+                               f'Subject: {get_field(4)}')
+            elif notice.format == b'MOIRA $instance on $fromhost:\n $message\n':
                 # Moira messages are funny
                 addr = notice.uid.address.decode('ascii')
                 try:
@@ -222,16 +226,16 @@ class Message(models.Model):
                 except socket.herror:
                     hostname = addr
                 msg.message = (f'MOIRA {msg.zinstance} on {hostname}:\n'
-                               f' {notice.fields[0]}')
+                               f' {get_field(1)}')
         except IndexError:
             pass
 
         if not msg.message:
             if len(notice.fields) == 2:
-                msg.signature = _d(notice.fields[0])[:255]
-                msg.message = _d(notice.fields[1])
+                msg.signature = get_field(1)[:255]
+                msg.message = get_field(2)
             elif len(notice.fields) == 1:
-                msg.message = _d(notice.fields[0])
+                msg.message = get_field(1)
 
         return msg
 
