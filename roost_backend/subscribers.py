@@ -140,7 +140,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
 
     async def resync_handler(self):
         _LOGGER.debug('[%s] resync task started.', self.log_prefix)
-        zsub = None
+        zsubs = None
         try:
             while True:
                 await self.resync_event.wait()
@@ -150,16 +150,24 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                     _LOGGER.debug('[%s] resync skipped due to lack of credentials.', self.log_prefix)
                     continue
 
-                if zsub is None:
-                    zsub = zephyr.Subscriptions()
+                if zsubs is None:
+                    zsubs = zephyr.Subscriptions()
+                    zsubs.cleanup = False  # Don't cancel subs on delete.
 
                 async with self.zephyr_lock:
-                    zsub.resync()
+                    zsubs.resync()
 
                 subs = await self.get_subs_to_resync()
+                good_subs = set()
                 for sub in subs:
                     async with self.zephyr_lock:
-                        zsub.add(sub)
+                        zsubs.add(sub)
+                    good_subs.add(zsubs._fixTuple(sub))
+
+                for sub in zsubs - good_subs:
+                    async with self.zephyr_lock:
+                        zsubs.remove(sub)
+
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] resync task cancelled.', self.log_prefix)
             raise
