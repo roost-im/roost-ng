@@ -359,7 +359,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                 ret.update(tuple(elt.decode('utf-8') for elt in sub) for sub in self._zsubs)
         _LOGGER.debug('[%s] retrieved %i subscriptions.', self.log_prefix, len(ret))
         if reply_channel:
-            await self.channel_layer.send(reply_channel, {'subscriptions': list(ret)})
+            await self.channel_layer.send(reply_channel, {'subscriptions': sorted(list(ret))})
     # End message handlers
 
 
