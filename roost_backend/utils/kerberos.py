@@ -131,7 +131,7 @@ def _get_zephyr_creds(realm):
     ccache = context.cc_default()
     principal = ccache.get_principal()
     zephyr = context.build_principal(realm, ['zephyr', 'zephyr'])
-    return ccache.get_credentials(principal, zephyr, cache_only=True)
+    return ccache.get_credentials(principal, zephyr)
 
 
 def get_zephyr_creds_dict(realm):
