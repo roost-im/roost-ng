@@ -213,6 +213,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                 await database_sync_to_async(msg.save)()
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] zephyr handler cancelled.', self.log_prefix)
+            await self.save_user_data()
             raise
         finally:
             _LOGGER.debug('[%s] zephyr handler done.', self.log_prefix)
