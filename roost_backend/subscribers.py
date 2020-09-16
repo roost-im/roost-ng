@@ -345,7 +345,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         _LOGGER.debug('[%s] retrieving subscriptions...', self.log_prefix)
         reply_channel = message.pop('_reply_to')
         ret = set()
-        if reply_channel and self.z_initialized.is_set():
+        if reply_channel and self._zsubs is not None:
             async with self.zephyr_lock:
                 # While this does not actually call libzephyr, we don't want subs changing out from
                 # under us.
