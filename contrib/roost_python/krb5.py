@@ -175,7 +175,7 @@ class CCache:
         creds = krb5_ctypes.krb5_creds()
 
         client_principal = keytab.get_first_principal()
-        options = ctypes.POINTER(krb5_ctypes.krb5_get_init_creds_opt)()
+        options = krb5_ctypes.krb5_get_init_creds_opt()
         krb5_get_init_creds_opt_alloc(self._ctx._handle, options)
         self.init_name(client_principal)
         if isinstance(service, str):

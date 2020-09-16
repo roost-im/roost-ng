@@ -281,22 +281,7 @@ class krb5_keytab_entry(ctypes.Structure):
     ]
 
 
-class krb5_get_init_creds_opt(ctypes.Structure):
-    _fields_ = [
-        ('flags', krb5_flags),
-        ('tkt_life', krb5_deltat),
-        ('renew_life', krb5_deltat),
-        ('forwardable', ctypes.c_int),
-        ('proxiable', ctypes.c_int),
-        ('enctype_list', ctypes.POINTER(krb5_enctype)),
-        ('enctype_list_length', ctypes.c_int),
-        ('address_list', ctypes.POINTER(ctypes.POINTER(krb5_address))),
-        ('preauth_list', ctypes.POINTER(krb5_preauthtype)),
-        ('preauth_list_length', ctypes.c_int),
-        ('salt', ctypes.POINTER(krb5_data)),
-    ]
-
-
+krb5_get_init_creds_opt = ctypes.c_void_p
 krb5_get_init_creds_opt_ptr = ctypes.POINTER(krb5_get_init_creds_opt)
 
 krb5_keytab = ctypes.c_void_p
@@ -366,18 +351,18 @@ krb5_get_init_creds_keytab.argtypes = (krb5_context,
                                        krb5_keytab,
                                        krb5_deltat,
                                        ctypes.POINTER(ctypes.c_char),
-                                       krb5_get_init_creds_opt_ptr)
+                                       krb5_get_init_creds_opt)
 
 krb5_get_init_creds_opt_alloc = libkrb5.krb5_get_init_creds_opt_alloc
 krb5_get_init_creds_opt_alloc.restype = krb5_error_code
 krb5_get_init_creds_opt_alloc.argtypes = (krb5_context,
-                                          ctypes.POINTER(krb5_get_init_creds_opt_ptr))
+                                          krb5_get_init_creds_opt_ptr)
 
 
 krb5_get_init_creds_opt_free = libkrb5.krb5_get_init_creds_opt_free
 krb5_get_init_creds_opt_free.restype = None
 krb5_get_init_creds_opt_free.argtypes = (krb5_context,
-                                         ctypes.POINTER(krb5_get_init_creds_opt_ptr))
+                                         krb5_get_init_creds_opt)
 
 # This is a kerberos internal, exported for GSSAPI to use, and I feel bad, but here we are.
 encode_krb5_ticket = libkrb5.encode_krb5_ticket
