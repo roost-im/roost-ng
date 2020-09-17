@@ -218,7 +218,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                             'ack': notice.fields[0].decode('utf-8')
                         })
                     continue
-                if notice.opcode.lower() == 'ping':
+                if notice.opcode.lower() == b'ping':
                     # Ignoring pings
                     continue
                 # This appears to be an incoming message.
