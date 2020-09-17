@@ -1,4 +1,4 @@
-# based on from https://github.com/samiconductor/modularsettings
+# based on https://github.com/samiconductor/modularsettings
 import importlib
 import inspect
 import pkgutil
