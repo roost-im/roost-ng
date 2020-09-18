@@ -419,7 +419,8 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
         self.stop_event = stop_event
         self.pid = os.getpid()
         self.user_tasks = {}
-        self.user_process_stop_events = {}
+        self.ctx = mp.get_context('forkserver')
+        self.child_stop_event = self.ctx.Event()
         if start:
             self.start()
 
@@ -449,6 +450,7 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
         _LOGGER.debug('[OVERSEER] waiting for stop event...')
         await sync_to_async(self.stop_event.wait, thread_sensitive=True)()
         _LOGGER.debug('[OVERSEER] received stop event...')
+        self.child_stop_event.set()
         tasks = [task for task in self.user_tasks.values() if task is not None]
         if tasks:
             await asyncio.wait(tasks)
@@ -461,13 +463,13 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
 
     async def server_process_watcher(self):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=ServerSubscriber, args=(self.stop_event,))
+            proc = self.ctx.Process(target=ServerSubscriber, args=(self.child_stop_event,))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 
     async def user_process_watcher(self, principal, uid):
         while not self.stop_event.is_set():
-            proc = mp.Process(target=UserSubscriber, args=(principal, uid, self.stop_event))
+            proc = self.ctx.Process(target=UserSubscriber, args=(principal, uid, self.child_stop_event))
             proc.start()
             await sync_to_async(proc.join, thread_sensitive=True)()
 

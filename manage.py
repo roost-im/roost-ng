@@ -2,7 +2,6 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-import multiprocessing
 
 
 def main():
@@ -19,5 +18,4 @@ def main():
 
 
 if __name__ == '__main__':
-    multiprocessing.set_start_method('forkserver')
     main()
