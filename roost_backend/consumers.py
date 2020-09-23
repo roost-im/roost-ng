@@ -32,9 +32,8 @@ class UserSocketConsumer(JsonWebsocketConsumer):
                 self.close(code=4002)
                 return
             self.user = user
-            async_to_sync(self.channel_layer.group_add)(
-                utils.principal_to_user_socket_group_name(user.principal),
-                self.channel_name)
+            self.groups.append(utils.principal_to_user_socket_group_name(user.principal))
+            async_to_sync(self.channel_layer.group_add)(self.groups[-1], self.channel_name)
             self.send_json({'type': 'ready'})
             return
 
@@ -98,11 +97,6 @@ class UserSocketConsumer(JsonWebsocketConsumer):
 
     def disconnect(self, code):
         _LOGGER.debug('WebSocket for user "%s" closed by client with code "%s".', self.user, code)
-
-        if self.user is not None:
-            async_to_sync(self.channel_layer.group_discard)(
-                utils.principal_to_user_socket_group_name(self.user.principal),
-                self.channel_name)
 
         for tail in self.tails.values():
             tail.close()
