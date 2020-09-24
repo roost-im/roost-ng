@@ -376,8 +376,7 @@ class Manager:
             self.start()
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self._enabled:
-            self.stop()
+        self.stop()
 
     def start(self):
         if self._proc:
