@@ -325,9 +325,13 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         }
 
         if 'signature' in notice_args:
-            notice_args['message'] = b'\0'.join([
-                notice_args.pop('signature'),
-                notice_args['message']])
+            sig = notice_args.pop('signature')
+            if isinstance(sig, bytes):
+                sig = sig.split(b'\x00', 1)[0]
+                notice_args['message'] = b'\x00'.join([
+                    sig,
+                    notice_args['message'],
+                ])
 
         if notice_args['recipient'].startswith(b'*'):
             notice_args['recipient'] = notice_args['recipient'][1:]
