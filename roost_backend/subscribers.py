@@ -17,6 +17,7 @@ import django
 import django.apps
 from django.core.exceptions import AppRegistryNotReady
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from djangorestframework_camel_case.util import underscoreize
 import setproctitle
 import zephyr
@@ -622,7 +623,7 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
     def get_subs_qs(self):
         # The _ZephyrProcessMixin requires us to define this.
         subs_qs = django.apps.apps.get_model('roost_backend', 'Subscription').objects.all()
-        subs_qs = subs_qs.filter(zrecipient='')
+        subs_qs = subs_qs.filter(Q(zrecipient='') | Q(zrecipient__startswith='@'))
         return subs_qs
 
     def start(self):
