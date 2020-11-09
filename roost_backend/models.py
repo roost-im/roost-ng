@@ -157,6 +157,7 @@ class Message(models.Model):
 
     @classmethod
     def from_notice(cls, notice, is_outgoing=False):
+        # pylint: disable=too-many-statements
         # Further needed arguments: direction, user?
 
         def _d(octets: bytes) -> str:
@@ -236,6 +237,10 @@ class Message(models.Model):
                 msg.message = get_field(2)
             elif len(notice.fields) == 1:
                 msg.message = get_field(1)
+            else:
+                # handle weird messages?
+                msg.signature = get_field(1)[:255]
+                msg.message = '\n'.join(get_field(i) for i in range(2,len(notice.fields)+1)).strip()
 
         return msg
 
