@@ -1,5 +1,6 @@
 import base64
 import datetime
+import json
 import re
 import socket
 import struct
@@ -238,9 +239,9 @@ class Message(models.Model):
             elif len(notice.fields) == 1:
                 msg.message = get_field(1)
             else:
-                # handle weird messages?
-                msg.signature = get_field(1)[:255]
-                msg.message = '\n'.join(get_field(i) for i in range(2,len(notice.fields)+1)).strip()
+                # handle weird messages
+                msg.signature = 'Roost: unexpected message contents'
+                msg.message = json.dumps([_d(field) for field in notice.fields], indent=4)
 
         return msg
 
