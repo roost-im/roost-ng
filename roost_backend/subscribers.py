@@ -653,3 +653,10 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         except asyncio.CancelledError:
             pass
         _LOGGER.debug('[%s] done.', self.log_prefix)
+
+    def _have_valid_zephyr_creds(self):
+        # The server subscriber can renew its own credentials as needed, so
+        # let's do that when we check to see if we have valid creds and find
+        # we don't.
+        if not super()._have_valid_zephyr_creds():
+            utils.kerberos.initialize_memory_ccache_from_client_keytab(reinit=True)
