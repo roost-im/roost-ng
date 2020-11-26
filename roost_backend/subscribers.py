@@ -658,5 +658,8 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         # The server subscriber can renew its own credentials as needed, so
         # let's do that when we check to see if we have valid creds and find
         # we don't.
-        if not super()._have_valid_zephyr_creds():
-            utils.kerberos.initialize_memory_ccache_from_client_keytab(reinit=True)
+        if super()._have_valid_zephyr_creds():
+            return True
+
+        utils.kerberos.initialize_memory_ccache_from_client_keytab(reinit=True)
+        return super()._have_valid_zephyr_creds()
