@@ -2,8 +2,6 @@
 Description=roost-ng
 [Service]
 Restart=on-failure
-StandardOutput=null
-StandardError=null
 User=roost-ng
 WorkingDirectory=/opt/roost-ng/
 KillSignal=SIGINT
