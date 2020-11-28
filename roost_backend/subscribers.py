@@ -459,7 +459,8 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
         await sync_to_async(self.stop_event.wait)()
         _LOGGER.debug('[OVERSEER] received stop event...')
 
-        self.server_stop_event.set()
+        if self.server_stop_event:
+            self.server_stop_event.set()
         for event in self.user_stop_events.values():
             event.set()
         tasks = [task for task in self.user_tasks.values() if task is not None]
