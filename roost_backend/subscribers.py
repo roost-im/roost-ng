@@ -5,7 +5,6 @@ import logging
 import multiprocessing as mp
 import os
 import random
-import select
 import signal
 
 from asgiref.sync import sync_to_async, async_to_sync
@@ -182,6 +181,9 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
     async def zephyr_handler(self):
         self.zephyr_lock = asyncio.Lock()
         self.resync_event = asyncio.Event()
+        receive_event = asyncio.Event()
+        loop = asyncio.get_running_loop()
+        zephyr_fd = None
         asyncio.create_task(self.resync_handler())
         _LOGGER.debug('[%s] zephyr handler started.', self.log_prefix)
         try:
@@ -189,19 +191,18 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
 
             # No need to start looking for incoming messages until we have initialized zephyr.
             await sync_to_async(self.z_initialized.wait)()
+            zephyr_fd = _zephyr.getFD()
+            loop.add_reader(zephyr_fd, receive_event.set)
             _LOGGER.debug('[%s] zephyr handler now receiving...', self.log_prefix)
             while True:
-                _LOGGER.debug('[%s] zephyr handler loop start...', self.log_prefix)
                 async with self.zephyr_lock:
                     # Since we're calling this non-blocking, not bothering to wrap and await.
                     notice = zephyr.receive()
 
                 if notice is None:
-                    _LOGGER.debug('[%s] wating on FD...', self.log_prefix)
-                    # ZGetFD() returns a global variable, does not do other things with the
-                    # library.  No lock required.
-                    await sync_to_async(select.select)([_zephyr.getFD()], [], [])
-                    _LOGGER.debug('[%s] data on FD...', self.log_prefix)
+                    await receive_event.wait()
+                    _LOGGER.debug('[%s] zephyr handler receive event...', self.log_prefix)
+                    receive_event.clear()
                     continue
 
                 _LOGGER.debug('[%s] got: %s, %s', self.log_prefix, notice, notice.kind)
@@ -228,6 +229,8 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                 await database_sync_to_async(msg.save)()
         except asyncio.CancelledError:
             _LOGGER.debug('[%s] zephyr handler cancelled.', self.log_prefix)
+            if zephyr_fd:
+                loop.remove_reader(zephyr_fd)
             await self.save_user_data()
             raise
         finally:
