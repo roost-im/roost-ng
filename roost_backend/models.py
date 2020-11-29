@@ -233,7 +233,13 @@ class Message(models.Model):
             pass
 
         if not msg.message:
-            if len(notice.fields) == 2:
+            if len(notice.fields) == 3 and get_field(3) == '':
+                # Probably Discord bot -- it probably treats fields as null-
+                # terminated instead of null-delimited, and consequently has
+                # a trailing empty field. Just ignore it.
+                msg.signature = get_field(1)[:255]
+                msg.message = get_field(2)
+            elif len(notice.fields) == 2:
                 msg.signature = get_field(1)[:255]
                 msg.message = get_field(2)
             elif len(notice.fields) == 1:
