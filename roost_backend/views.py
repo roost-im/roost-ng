@@ -159,8 +159,8 @@ class MessageView(generics.ListAPIView):
         # clamp limit
         if limit < 1:
             limit = 1
-        elif limit > 128:
-            limit = 128
+        elif limit > settings.ROOST_MESSAGES_MAX_LIMIT:
+            limit = settings.ROOST_MESSAGES_MAX_LIMIT
 
         if offset:
             offset = utils.unseal_message_id(offset)
