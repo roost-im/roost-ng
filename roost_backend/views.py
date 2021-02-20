@@ -51,13 +51,17 @@ class AuthView(APIView):
             return Response("Roost-ng does not support multi-step GSS handshakes.", status=status.HTTP_400_BAD_REQUEST)
 
         principal = str(ctx.initiator_name)
-        if (serializer.validated_data['create_user']
-                and settings.ROOST_ALLOW_USER_CREATION
+        if serializer.validated_data['create_user']:
+            if ((settings.ROOST_ALLOW_USER_CREATION
+                     or principal in settings.ROOST_USER_CREATION_ALLOWLIST)
                 and principal not in settings.ROOST_USER_CREATION_BLACKLIST):
-            with transaction.atomic():
-                user, created = models.User.objects.get_or_create(principal=principal)
-            if created:
-                async_to_sync(self.wait_for_user_process)(user.principal)
+                with transaction.atomic():
+                    user, created = models.User.objects.get_or_create(principal=principal)
+                if created:
+                    async_to_sync(self.wait_for_user_process)(user.principal)
+            else:
+                return HttpResponse('User creation not allowed for user %s' % (principal, ),
+                                    status=status.HTTP_403_FORBIDDEN)
         else:
             user = models.User.objects.filter(principal=principal).first()
 
