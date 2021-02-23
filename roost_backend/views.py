@@ -1,3 +1,4 @@
+import collections.abc
 import datetime
 
 from asgiref.sync import async_to_sync
@@ -51,15 +52,20 @@ class AuthView(APIView):
             return Response("Roost-ng does not support multi-step GSS handshakes.", status=status.HTTP_400_BAD_REQUEST)
 
         principal = str(ctx.initiator_name)
-        if (serializer.validated_data['create_user']
-                and settings.ROOST_ALLOW_USER_CREATION
-                and principal not in settings.ROOST_USER_CREATION_BLACKLIST):
-            with transaction.atomic():
-                user, created = models.User.objects.get_or_create(principal=principal)
-            if created:
-                async_to_sync(self.wait_for_user_process)(user.principal)
-        else:
-            user = models.User.objects.filter(principal=principal).first()
+        user = models.User.objects.filter(principal=principal).first()
+
+        if user is None and serializer.validated_data['create_user']:
+            if ((settings.ROOST_ALLOW_USER_CREATION is True  # explicit check for bool here
+                 and principal not in settings.ROOST_USER_CREATION_DENYLIST)
+                or (isinstance(settings.ROOST_ALLOW_USER_CREATION, collections.abc.Container)
+                    and principal in settings.ROOST_ALLOW_USER_CREATION)):
+                with transaction.atomic():
+                    user, created = models.User.objects.get_or_create(principal=principal)
+                if created:
+                    async_to_sync(self.wait_for_user_process)(user.principal)
+            else:
+                return HttpResponse(f'User creation not allowed for user {principal}',
+                                    status=status.HTTP_403_FORBIDDEN)
 
         if user is None:
             return HttpResponse('User does not exist', status=status.HTTP_403_FORBIDDEN)
