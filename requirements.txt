@@ -17,7 +17,7 @@ daphne==2.5.0
 decorator==4.4.2
 Django==3.1.7
 django-cors-headers==3.5.0
-djangorestframework==3.11.1
+djangorestframework==3.11.2
 djangorestframework-camel-case==1.2.0
 entrypoints==0.3
 flake8==3.8.3
