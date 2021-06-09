@@ -15,7 +15,7 @@ cryptography==3.3.2
 Cython==0.29.21
 daphne==2.5.0
 decorator==4.4.2
-Django==3.1.8
+Django==3.1.10
 django-cors-headers==3.5.0
 djangorestframework==3.11.2
 djangorestframework-camel-case==1.2.0
