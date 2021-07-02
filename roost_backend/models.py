@@ -185,7 +185,7 @@ class Message(models.Model):
         msg.sender = _d(notice.sender)
         msg.recipient = _d(notice.recipient)
 
-        msg.is_personal = bool(msg.recipient)
+        msg.is_personal = bool(msg.recipient and not msg.recipient.startswith('@'))
         msg.is_outgoing = is_outgoing
         if msg.is_personal:
             msg.conversation = msg.recipient if is_outgoing else msg.sender
