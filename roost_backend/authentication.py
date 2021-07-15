@@ -23,11 +23,11 @@ class JWTAuthentication(authentication.TokenAuthentication):
     def _decode_token(token):
         try:
             return jwt.decode(token, secrets.AUTHTOKEN_KEY, algorithms=['HS256'])
-        except jwt.DecodeError:
+        except (jwt.DecodeError, jwt.InvalidSignatureError):
             return None
-        except jwt.ExpiredSignature as exc:
+        except jwt.ExpiredSignatureError as exc:
             raise exceptions.AuthenticationFailed('Expired token') from exc
-        except jwt.InvalidAudience as exc:
+        except jwt.InvalidAudienceError as exc:
             raise exceptions.AuthenticationFailed('Invalid token') from exc
 
     @classmethod

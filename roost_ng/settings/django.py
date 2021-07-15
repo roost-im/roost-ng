@@ -51,7 +51,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'roost_ng.urls'
 
 WSGI_APPLICATION = 'roost_ng.wsgi.application'
-ASGI_APPLICATION = 'roost_ng.routing.application'
+ASGI_APPLICATION = 'roost_ng.asgi.application'
 
 
 # Password validation
@@ -93,3 +93,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 APPEND_SLASH = False
+
+
+# New in Django 3.2; TODO: write migration to AutoBigField
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'

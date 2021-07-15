@@ -9,6 +9,7 @@ import signal
 
 from asgiref.sync import sync_to_async, async_to_sync
 import channels.consumer
+from channels import DEFAULT_CHANNEL_LAYER
 from channels.db import database_sync_to_async
 import channels.layers
 import channels.utils
@@ -46,6 +47,8 @@ class _ChannelLayerMixin:
     groups to subscribe to. Then start a task to run the `channel_layer_handler`, cancel it when you
     want to stop. This may be worth extracting to a utility module."""
 
+    channel_layer_alias = DEFAULT_CHANNEL_LAYER
+
     def __init__(self):
         super().__init__()
         self.channel_layer = None
@@ -64,7 +67,7 @@ class _ChannelLayerMixin:
 
     async def channel_layer_handler(self):
         # Initialize channel layer.'
-        self.channel_layer = channels.layers.get_channel_layer()
+        self.channel_layer = channels.layers.get_channel_layer(self.channel_layer_alias)
         self.channel_name = await self.channel_layer.new_channel()
         self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
 
@@ -190,7 +193,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
             await self.load_user_data()
 
             # No need to start looking for incoming messages until we have initialized zephyr.
-            await sync_to_async(self.z_initialized.wait)()
+            await sync_to_async(self.z_initialized.wait, thread_sensitive=False)()
             zephyr_fd = _zephyr.getFD()
             loop.add_reader(zephyr_fd, receive_event.set)
             _LOGGER.debug('[%s] zephyr handler now receiving...', self.log_prefix)
@@ -459,7 +462,7 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
         await asyncio.sleep(0)
 
         _LOGGER.debug('[OVERSEER] waiting for stop event...')
-        await sync_to_async(self.stop_event.wait)()
+        await sync_to_async(self.stop_event.wait, thread_sensitive=False)()
         _LOGGER.debug('[OVERSEER] received stop event...')
 
         if self.server_stop_event:
@@ -571,7 +574,7 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         _LOGGER.debug('[%s] announced.', self.log_prefix)
         await asyncio.wait(
             [
-                sync_to_async(self.stop_event.wait)(),
+                sync_to_async(self.stop_event.wait, thread_sensitive=False)(),
                 zephyr_task,
                 channel_task,
             ],
@@ -641,7 +644,7 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         channel_task = asyncio.create_task(self.channel_layer_handler())
         await asyncio.wait(
             [
-                sync_to_async(self.stop_event.wait)(),
+                sync_to_async(self.stop_event.wait, thread_sensitive=False)(),
                 zephyr_task,
                 channel_task,
             ],

@@ -9,21 +9,18 @@ https://docs.djangoproject.com/en/3.0/howto/deployment/asgi/
 
 import os
 
-from channels.routing import get_default_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.core.asgi import get_asgi_application
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'roost_ng.settings')
 django.setup()
-_application = get_default_application()
+
+import roost_ng.routing
+from roost_ng.middleware import DaphneRootPathForWebsockets
 
 
-def application(scope):
-    if scope['type'] == 'websocket':
-        # Daphne does not deal with the daphne-root-path header for websockets,
-        # so we will deal with it here.
-        headers = dict(scope['headers'])
-        root_path = headers.get(b'daphne-root-path', b'').decode()
-        path = scope['path']
-        if root_path and path.startswith(root_path):
-            scope['path'] = path[len(root_path):]
-    return _application(scope)
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": DaphneRootPathForWebsockets(URLRouter(roost_ng.routing.websocket_urlpatterns)),
+})

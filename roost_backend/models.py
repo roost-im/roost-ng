@@ -31,7 +31,7 @@ class User(models.Model):
             'exp': exp,
         })
         return {
-            'auth_token': jwt.encode(claims, secrets.AUTHTOKEN_KEY, algorithm='HS256').decode('utf-8'),
+            'auth_token': jwt.encode(claims, secrets.AUTHTOKEN_KEY, algorithm='HS256'),
             # Since the JWT token will have expiration to the second, drop fractional parts of the timestamp.
             'expires': int(exp.timestamp()) * 1000,
         }
@@ -167,11 +167,12 @@ class Message(models.Model):
                 return octets.decode('utf-8')
             if notice._charset == b'ISO-8859-1':
                 return octets.decode('latin-1')
-            for enc in ('ascii', 'utf-8', 'latin-1'):
+            for enc in ('ascii', 'utf-8'):
                 try:
                     return octets.decode(enc)
                 except UnicodeDecodeError:
                     pass
+            return octets.decode('latin-1')
 
         msg = cls()
         msg.zclass = _d(notice.cls)
