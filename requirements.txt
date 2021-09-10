@@ -44,7 +44,7 @@ PyZephyr @ git+git://github.com/asedeno/python-zephyr@3c4edc9c02bc023c55a625b686
 service-identity==21.1.0
 setproctitle==1.2.2
 six==1.16.0
-sqlparse==0.4.1
+sqlparse==0.4.2
 toml==0.10.2
 Twisted==21.2.0
 txaio==21.2.1
