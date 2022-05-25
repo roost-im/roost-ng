@@ -40,7 +40,7 @@ pylint-plugin-utils==0.6
 pyOpenSSL==20.0.1
 pytz==2021.1
 PyYAML==5.4.1
-PyZephyr @ git+git://github.com/asedeno/python-zephyr@3c4edc9c02bc023c55a625b686af86f3d226a505
+PyZephyr @ git+https://github.com/asedeno/python-zephyr@3c4edc9c02bc023c55a625b686af86f3d226a505
 service-identity==21.1.0
 setproctitle==1.2.2
 six==1.16.0
