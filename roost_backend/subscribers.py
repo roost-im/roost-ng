@@ -128,8 +128,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         _LOGGER.debug('[%s] asking for subs resync.', self.log_prefix)
         self.resync_event.set()
 
-    @staticmethod
-    def _have_valid_zephyr_creds():
+    def _have_valid_zephyr_creds(self):
         return utils.kerberos.have_valid_zephyr_creds(_zephyr.realm())
 
     def zinit(self):
@@ -449,7 +448,6 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
 
     @database_sync_to_async
     def get_users(self):
-        # pylint: disable=no-self-use
         return list(django.apps.apps.get_model('roost_backend', 'User').objects.all().values_list('id', 'principal'))
 
     async def oversee(self):
