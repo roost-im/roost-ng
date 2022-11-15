@@ -25,7 +25,8 @@ ALLOWED_HOSTS = cfg.get('allowed_hosts', ['*'])
 # Application definition
 
 INSTALLED_APPS = [
-    'roost_backend',
+    'roost_backend',            # Docs say daphne wants to come first because it overrides
+    'daphne',                   # runserver; 'roost_backend' overrides daphne here, so second.
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

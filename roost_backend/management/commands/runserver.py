@@ -1,12 +1,12 @@
 import os
 
 from django.utils import autoreload
-from channels.management.commands.runserver import Command as ChannelsRunserverCommand
+from daphne.management.commands.runserver import Command as DaphneRunserverCommand
 
 from ...subscribers import Manager as SubscriberManager
 
 
-class Command(ChannelsRunserverCommand):
+class Command(DaphneRunserverCommand):
     """Start and stop user processes when running channels dev server."""
     def handle(self, *args, **options):
         sm_enabled = False
