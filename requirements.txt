@@ -29,7 +29,6 @@ lazy-object-proxy==1.8.0
 mccabe==0.7.0
 msgpack==1.0.4
 packaging==21.3
-pkg_resources==0.0.0
 platformdirs==2.5.4
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
