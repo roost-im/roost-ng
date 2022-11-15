@@ -1,0 +1,19 @@
+channels[daphne]>=4.0.0,<5
+channels-redis>=4.0.0,<5
+cryptography
+Cython
+Django>=3.2,<4.0
+django-cors-headers
+djangorestframework
+djangorestframework-camel-case
+flake8
+gssapi
+pycodestyle
+PyJWT
+pylint
+pylint-django
+pylint-plugin-utils
+PyYAML
+PyZephyr @ git+https://github.com/asedeno/python-zephyr@3c4edc9c02bc023c55a625b686af86f3d226a505
+setproctitle
+Twisted
