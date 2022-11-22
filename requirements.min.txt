@@ -14,6 +14,6 @@ pylint
 pylint-django
 pylint-plugin-utils
 PyYAML
-PyZephyr @ git+https://github.com/asedeno/python-zephyr@3c4edc9c02bc023c55a625b686af86f3d226a505
+PyZephyr @ git+https://github.com/asedeno/python-zephyr@850f0ae696691bfbaed633fa7a53532624e78d40
 setproctitle
 Twisted
