@@ -167,8 +167,10 @@ class Tail:
 
         if self.messages_wanted:
             message_buffer, self.message_buffer = self.message_buffer, None
-            message_buffer = [msg for msg in message_buffer if msg.id > self.last_sent]
-            self.emit_messages(message_buffer)
+            messages = [{'id': msg.id,
+                         'payload': serializers.MessageSerializer(msg).data,
+                         } for msg in message_buffer if msg.id > self.last_sent]
+            self.emit_messages(messages)
 
         if not self.messages_wanted:
             self.deactivate()
