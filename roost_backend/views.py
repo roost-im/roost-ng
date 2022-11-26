@@ -153,14 +153,13 @@ class UnsubscribeView(APIView):
 class MessageView(generics.ListAPIView):
     serializer_class = serializers.MessageSerializer
 
-    def get_queryset_and_done(self):
-        request = self.request
-        qs = request.user.message_set.all()
+    @classmethod
+    def prepare_response_payload(cls, qs, params):
 
-        reverse = int(request.query_params.get('reverse', False))
-        inclusive = int(request.query_params.get('inclusive', False))
-        offset = request.query_params.get('offset')
-        limit = int(request.query_params.get('count', 0))
+        reverse = int(params.get('reverse', False))
+        inclusive = int(params.get('inclusive', False))
+        offset = params.get('offset')
+        limit = int(params.get('count', 0))
 
         # clamp limit
         if limit < 1:
@@ -183,16 +182,19 @@ class MessageView(generics.ListAPIView):
         if reverse:
             qs = qs.reverse()
 
-        qs = filters.MessageFilter(**request.query_params).apply_to_queryset(qs)
-        is_done = qs.count() <= limit
-        return qs[:limit], is_done
+        qs = filters.MessageFilter(**params).apply_to_queryset(qs)
+        # We get limit+1 to detect if we have more to fetch
+        serializer = cls.serializer_class(qs[:limit+1], many=True)
+        payload = {
+            'messages': serializer.data[:limit],
+            'isDone': len(serializer.data) <= limit,
+        }
+        return payload
 
     def list(self, request, *args, **kwargs):
-        qs, is_done = self.get_queryset_and_done()
-        return Response({
-            'messages': self.serializer_class(qs, many=True).data,
-            'isDone': is_done,
-        })
+        qs = request.user.message_set.all()
+        payload = self.prepare_response_payload(qs, request.query_params)
+        return Response(payload)
 
 
 @method_decorator(COMMON_DECORATORS, name='dispatch')
