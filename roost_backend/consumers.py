@@ -5,7 +5,7 @@ from channels.generic.websocket import JsonWebsocketConsumer
 from djangorestframework_camel_case.util import camelize
 
 from .authentication import JWTAuthentication
-from . import filters, serializers, utils
+from . import filters, serializers, utils, views
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +21,13 @@ class UserSocketConsumer(JsonWebsocketConsumer):
         self.active_tails = set()
 
     def receive_json(self, content, **kwargs):
+        DISPATCH_DICT = {
+            'ping': self.on_ping,
+            'get-messages': self.on_get_messages,
+            'new-tail': self.on_new_tail,
+            'extend-tail': self.on_extend_tail,
+            'close-tail': self.on_close_tail,
+        }
         msg_type = content.get('type')
         if self.user is None:
             # Auth or reject as needed.
@@ -34,22 +41,29 @@ class UserSocketConsumer(JsonWebsocketConsumer):
             self.user = user
             self.groups.append(utils.principal_to_user_socket_group_name(user.principal))
             async_to_sync(self.channel_layer.group_add)(self.groups[-1], self.channel_name)
-            self.send_json({'type': 'ready'})
+            self.send_json({
+                'type': 'ready',
+                'msgs': list(DISPATCH_DICT.keys())
+            })
             return
 
         # dispatch on message type, close if unrecognized.
         try:
-            {
-                'ping': self.on_ping,
-                'new-tail': self.on_new_tail,
-                'extend-tail': self.on_extend_tail,
-                'close-tail': self.on_close_tail,
-            }[msg_type](content)
+            DISPATCH_DICT[msg_type](content)
         except (KeyError, NotImplementedError, self.BadMessage):
             self.close(code=4005)
 
     def on_ping(self, _content):
         self.send_json({'type': 'pong'})
+
+    def on_get_messages(self, content):
+        qs = self.user.message_set.all()
+        response = views.MessageView.prepare_response_payload(qs, content)
+        if 'requestId' in content:
+            response['requestId'] = content['requestId']
+        response['type'] = 'messages'
+        response['messages'] = [camelize(msg) for msg in response['messages']]
+        self.send_json(response)
 
     def on_new_tail(self, content):
         tail_id = content.get('id')
