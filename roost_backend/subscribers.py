@@ -72,7 +72,7 @@ class _ChannelLayerMixin:
         self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
 
         # Subscribe to groups
-        asyncio.create_task(self.channel_layer_resubscribe())
+        resubscriber_task = asyncio.create_task(self.channel_layer_resubscribe())
         await asyncio.sleep(0)
 
         # wait for and dispatch messages until we get cancelled.
@@ -81,6 +81,8 @@ class _ChannelLayerMixin:
                 await channels.utils.await_many_dispatch([self.channel_receive], self.dispatch)
             except ValueError as exc:
                 _LOGGER.error('Dispatch failed: %s', exc)
+
+        resubscriber_task.cancel()
 
     async def dispatch(self, message):
         # Let's use the same dispatching mechanism that django channels consumers use.
@@ -186,7 +188,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
         receive_event = asyncio.Event()
         loop = asyncio.get_running_loop()
         zephyr_fd = None
-        asyncio.create_task(self.resync_handler())
+        resync_task = asyncio.create_task(self.resync_handler())
         _LOGGER.debug('[%s] zephyr handler started.', self.log_prefix)
         try:
             await self.load_user_data()
@@ -236,6 +238,7 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
             await self.save_user_data()
             raise
         finally:
+            resync_task.cancel()
             _LOGGER.debug('[%s] zephyr handler done.', self.log_prefix)
 
     @database_sync_to_async
