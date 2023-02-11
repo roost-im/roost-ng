@@ -16,8 +16,11 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'roost_ng.settings')
 django.setup()
 
+# These imports can't happen before django.setup().
+# pylint: disable=wrong-import-position
 import roost_ng.routing
 from roost_ng.middleware import DaphneRootPathForWebsockets
+# pylint: enable=wrong-import-position
 
 
 application = ProtocolTypeRouter({

@@ -21,7 +21,7 @@ class UserSocketConsumer(JsonWebsocketConsumer):
         self.active_tails = set()
 
     def receive_json(self, content, **kwargs):
-        DISPATCH_DICT = {
+        dispatch_dict = {
             'ping': self.on_ping,
             'get-messages': self.on_get_messages,
             'new-tail': self.on_new_tail,
@@ -43,13 +43,13 @@ class UserSocketConsumer(JsonWebsocketConsumer):
             async_to_sync(self.channel_layer.group_add)(self.groups[-1], self.channel_name)
             self.send_json({
                 'type': 'ready',
-                'msgs': list(DISPATCH_DICT.keys())
+                'msgs': list(dispatch_dict.keys())
             })
             return
 
         # dispatch on message type, close if unrecognized.
         try:
-            DISPATCH_DICT[msg_type](content)
+            dispatch_dict[msg_type](content)
         except (KeyError, NotImplementedError, self.BadMessage):
             self.close(code=4005)
 
