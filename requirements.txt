@@ -33,7 +33,8 @@ packaging==21.3
 platformdirs==2.5.4
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
-pycodestyle==2.10.0
+pycodestyle==2.10.0;python_version>="3.8.1"
+pycodestyle==2.9.1;python_version<"3.8.1"
 pycparser==2.21
 pyflakes==3.0.1;python_version>="3.8.1"
 pyflakes==2.5.0;python_version<"3.8.1"
