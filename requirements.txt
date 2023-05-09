@@ -14,7 +14,7 @@ daphne==4.0.0
 decorator==5.1.1
 Deprecated==1.2.13
 dill==0.3.6
-Django==3.2.18
+Django==3.2.19
 django-cors-headers==3.13.0
 djangorestframework==3.14.0
 djangorestframework-camel-case==1.4.0
