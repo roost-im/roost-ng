@@ -575,7 +575,7 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         _LOGGER.debug('[%s] announced.', self.log_prefix)
         await asyncio.wait(
             [
-                sync_to_async(self.stop_event.wait, thread_sensitive=False)(),
+                asyncio.create_task(sync_to_async(self.stop_event.wait, thread_sensitive=False)()),
                 zephyr_task,
                 channel_task,
             ],
@@ -645,7 +645,7 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         channel_task = asyncio.create_task(self.channel_layer_handler())
         await asyncio.wait(
             [
-                sync_to_async(self.stop_event.wait, thread_sensitive=False)(),
+                asyncio.create_task(sync_to_async(self.stop_event.wait, thread_sensitive=False)()),
                 zephyr_task,
                 channel_task,
             ],
