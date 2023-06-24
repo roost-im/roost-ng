@@ -223,7 +223,7 @@ class ZephyrCredsView(APIView):
 
     def post(self, request):
         # Accept, validate, and then promptly ignore credentials.
-        # If they were included, they auth layer pushed them to the user process.
+        # If they were included, the auth layer pushed them to the user process.
         ret = request.zephyr_credentials is not None
         return Response({
             'refreshed': ret,

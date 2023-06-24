@@ -70,7 +70,8 @@ class _ChannelLayerMixin:
             await asyncio.sleep(self.channel_layer.group_expiry / 2)
 
     async def channel_layer_handler(self):
-        # Initialize channel layer.'
+        # Initialize channel layer.
+
         self.channel_layer = channels.layers.get_channel_layer(self.channel_layer_alias)
         self.channel_name = await self.channel_layer.new_channel()
         self.channel_receive = functools.partial(self.channel_layer.receive, self.channel_name)
