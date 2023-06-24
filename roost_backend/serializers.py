@@ -73,7 +73,7 @@ class KerberosCredentialsSerializer(serializers.Serializer):
     authtime = serializers.IntegerField()
     starttime = serializers.IntegerField()
     endtime = serializers.IntegerField()
-    renew_till = serializers.IntegerField(required=False)
+    renew_till = serializers.IntegerField(required=False, default=0)
     srealm = serializers.CharField()
     sname = _InlineNameSerializer()
 
