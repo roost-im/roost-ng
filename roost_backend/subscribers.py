@@ -59,6 +59,10 @@ class _ChannelLayerMixin:
     def groups(self):
         raise NotImplementedError()
 
+    @property
+    def log_prefix(self):
+        return '?'
+
     async def channel_layer_resubscribe(self):
         while True:
             for group_name in self.groups:
@@ -80,7 +84,7 @@ class _ChannelLayerMixin:
             try:
                 await channels.utils.await_many_dispatch([self.channel_receive], self.dispatch)
             except ValueError as exc:
-                _LOGGER.error('Dispatch failed: %s', exc)
+                _LOGGER.error('[%s] Dispatch failed: %s', self.log_prefix, exc)
 
         resubscriber_task.cancel()
 
@@ -396,6 +400,10 @@ class Manager:
     def __exit__(self, exc_type, exc_value, traceback):
         self.stop()
 
+    @property
+    def log_prefix(self):
+        return 'Manager'
+
     def start(self):
         if self._proc:
             if self._proc.is_alive():
@@ -444,6 +452,10 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
 
     def __str__(self):
         return f'Overseer<{self.pid}>'
+
+    @property
+    def log_prefix(self):
+        return 'OVERSEER'
 
     def start(self):
         setproctitle.setproctitle('roost:OVERSEER')
