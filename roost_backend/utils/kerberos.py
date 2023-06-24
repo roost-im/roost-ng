@@ -93,7 +93,7 @@ def add_credential_to_ccache(creds, princ=None):
     kcreds.times.authtime = creds['authtime'] // 1000
     kcreds.times.starttime = creds['starttime'] // 1000
     kcreds.times.endtime = creds['endtime'] // 1000
-    kcreds.times.renew_till = creds['renew_till'] // 1000
+    kcreds.times.renew_till = creds.get('renew_till', 0) // 1000
     kcreds.is_skey = False
 
     # This makes roost's python sad. Add a null check there before dereferencing.
