@@ -453,6 +453,10 @@ class Overseer(_MPDjangoSetupMixin, _ChannelLayerMixin):
     def get_users(self):
         return list(django.apps.apps.get_model('roost_backend', 'User').objects.all().values_list('id', 'principal'))
 
+    async def wait_for_stop_event(self):
+        # Wrapper around sync_to_async to make asyncio happy.
+        await sync_to_async(self.stop_event.wait, thread_sensitive=False)()
+
     async def oversee(self):
         _LOGGER.debug('[OVERSEER] starting...')
         channel_task = asyncio.create_task(self.channel_layer_handler())
@@ -561,9 +565,18 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         self._initialize_memory_ccache()
         async_to_sync(self.run)()
 
+    async def wait_for_stop_event(self):
+        # Wrapper around sync_to_async to make asyncio happy.
+        await sync_to_async(self.stop_event.wait, thread_sensitive=False)()
+        _LOGGER.debug('[%s] done waiting for stop_event.', self.log_prefix)
+
     async def run(self):
-        zephyr_task = asyncio.create_task(self.zephyr_handler())
-        channel_task = asyncio.create_task(self.channel_layer_handler())
+        tasks = [
+            asyncio.create_task(self.wait_for_stop_event()),
+            asyncio.create_task(self.zephyr_handler()),
+            asyncio.create_task(self.channel_layer_handler()),
+        ]
+
         while self.channel_layer is None:
             await asyncio.sleep(0)
         # Announce our activation.
@@ -573,23 +586,19 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
             'principal': self.principal,
         })
         _LOGGER.debug('[%s] announced.', self.log_prefix)
-        await asyncio.wait(
-            [
-                asyncio.create_task(sync_to_async(self.stop_event.wait, thread_sensitive=False)()),
-                zephyr_task,
-                channel_task,
-            ],
-            return_when=asyncio.FIRST_COMPLETED)
-        zephyr_task.cancel()
-        channel_task.cancel()
-        try:
-            await zephyr_task
-        except asyncio.CancelledError:
-            pass
-        try:
-            await channel_task
-        except asyncio.CancelledError:
-            pass
+
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+        for task in tasks:
+            task.cancel()
+
+        for task in tasks:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        _LOGGER.debug('[%s] %s.', self.log_prefix, tasks)
         _LOGGER.debug('[%s] done.', self.log_prefix)
 
     # Start of Channel Layer message handlers
@@ -640,26 +649,27 @@ class ServerSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
         utils.kerberos.initialize_memory_ccache_from_client_keytab()
         async_to_sync(self.run)()
 
+    async def wait_for_stop_event(self):
+        # Wrapper around sync_to_async to make asyncio happy.
+        await sync_to_async(self.stop_event.wait, thread_sensitive=False)()
+
     async def run(self):
-        zephyr_task = asyncio.create_task(self.zephyr_handler())
-        channel_task = asyncio.create_task(self.channel_layer_handler())
-        await asyncio.wait(
-            [
-                asyncio.create_task(sync_to_async(self.stop_event.wait, thread_sensitive=False)()),
-                zephyr_task,
-                channel_task,
-            ],
-            return_when=asyncio.FIRST_COMPLETED)
-        zephyr_task.cancel()
-        channel_task.cancel()
-        try:
-            await zephyr_task
-        except asyncio.CancelledError:
-            pass
-        try:
-            await channel_task
-        except asyncio.CancelledError:
-            pass
+        tasks = [
+            asyncio.create_task(self.wait_for_stop_event()),
+            asyncio.create_task(self.zephyr_handler()),
+            asyncio.create_task(self.channel_layer_handler()),
+        ]
+        await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+        for task in tasks:
+            task.cancel()
+
+        for task in tasks:
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
         _LOGGER.debug('[%s] done.', self.log_prefix)
 
     def _have_valid_zephyr_creds(self):
