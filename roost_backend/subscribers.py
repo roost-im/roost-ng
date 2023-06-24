@@ -142,8 +142,11 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
             return
 
         _LOGGER.debug('[%s] zinit...', self.log_prefix)
-        zephyr.init()
-        self.z_initialized.set()
+        try:
+            zephyr.init()
+            self.z_initialized.set()
+        except OSError:
+            pass
 
     @database_sync_to_async
     def get_subs_to_resync(self):
@@ -243,6 +246,9 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
             raise
         finally:
             resync_task.cancel()
+            if not self.z_initialized.is_set():
+                # unstick sync_to_async on z_initialized.wait if it's still there.
+                self.z_initialized.set()
             _LOGGER.debug('[%s] zephyr handler done.', self.log_prefix)
 
     @database_sync_to_async
@@ -328,9 +334,15 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
 
     # Start of Channel Layer message handlers
     async def zwrite(self, message):
-        await sync_to_async(self.zinit)()
         msg_args = message['message']
         reply_channel = message.pop('_reply_to', None)
+        await sync_to_async(self.zinit)()
+        if not self.z_initialized.is_set():
+            if reply_channel:
+                await self.channel_layer.send(reply_channel, {
+                    'error': 'failed to initialize zephyr library.'
+                })
+            return
 
         notice_args = {
             k: v.encode()
