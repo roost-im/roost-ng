@@ -122,6 +122,21 @@ def add_credential_to_ccache(creds, princ=None):
     k5.encode_krb5_ticket(ctypes.byref(ktkt), ctypes.byref(p_tkt_data))
     kcreds.ticket = p_tkt_data.contents
 
+    # compare against our current credential
+    try:
+        current_credential = _get_zephyr_creds(creds['ticket']['realm'])
+        if current_credential.endtime >= kcreds.times.endtime:
+            # New cred doesn't buy us any time; skip it.
+            return
+        k5.krb5_cc_remove_cred(ctx._handle, ccache._handle,
+                               0, current_credential._handle)
+    except k5.Error:
+        # If this fails, we either don't have old credentials or the
+        # MEMORY cache is too old to implement credential removal. In
+        # the latter case, it's also old enough to store newer
+        # credentials first, which probably works even if it is leaky.
+        pass
+
     # and finally, store the new cred in the ccache.
     k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds)
 
