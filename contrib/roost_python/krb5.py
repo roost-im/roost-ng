@@ -329,12 +329,18 @@ class Credentials:
         return self._ctx._decode_second_ticket(
             self._handle.contents.second_ticket)
 
+    @property
+    def starttime(self):
+        return self._handle.contents.times.starttime
+
+    @property
+    def endtime(self):
+        return self._handle.contents.times.endtime
+
     def is_valid(self):
         """Chceks to see if the credential is in its valid lifetime."""
-        start = self._handle.contents.times.starttime
-        end = self._handle.contents.times.endtime
         now = datetime.datetime.utcnow().timestamp()
-        return start <= now < end
+        return self.starttime <= now < self.endtime
 
     def to_dict(self):
         # TODO(davidben): More sensible would be to put this format
