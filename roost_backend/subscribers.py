@@ -623,7 +623,6 @@ class UserSubscriber(_MPDjangoSetupMixin, _ZephyrProcessMixin):
             except asyncio.CancelledError:
                 pass
 
-        _LOGGER.debug('[%s] %s.', self.log_prefix, tasks)
         _LOGGER.debug('[%s] done.', self.log_prefix)
 
     # Start of Channel Layer message handlers
