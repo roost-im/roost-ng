@@ -300,6 +300,13 @@ krb5_cc_store_cred = libkrb5.krb5_cc_store_cred
 krb5_cc_store_cred.restype = krb5_error_code
 krb5_cc_store_cred.argtypes = (krb5_context, krb5_ccache, krb5_creds_ptr)
 
+krb5_cc_remove_cred = libkrb5.krb5_cc_remove_cred
+krb5_cc_remove_cred.restype = krb5_error_code
+krb5_cc_remove_cred.argtypes = (krb5_context,
+                                krb5_ccache,
+                                krb5_flags,
+                                krb5_creds_ptr)
+
 krb5_init_keyblock = libkrb5.krb5_init_keyblock
 krb5_init_keyblock.restype = krb5_error_code
 krb5_init_keyblock.argtypes = (krb5_context,
