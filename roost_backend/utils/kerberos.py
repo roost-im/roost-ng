@@ -35,7 +35,7 @@ def initialize_memory_ccache_from_client_keytab(reinit=False):
     ccache.init_from_keytab(keytab)
 
 
-def add_credential_to_ccache(creds, princ=None):
+def parse_credential_dict(ctx, creds):
     # pylint: disable=protected-access, too-many-locals, too-many-statements
     # all this should be abstracted away somewhere else.
     # This may be leaky. Consider kdestroy/re-init/re-ping zephyr servers.
@@ -58,22 +58,12 @@ def add_credential_to_ccache(creds, princ=None):
             return base64.b64decode(data)
         return data
 
-    def verify_same_princ(client):
-        if princ:
-            client_name = client.unparse_name()
-            given_client_name = princ.encode('utf-8')
-            if client_name != given_client_name:
-                raise ValueError(f'Ticket for wrong client: {client_name} vs {given_client_name}')
-
-    ctx = k5.Context()
-    ccache = ctx.cc_default()
     kcreds = kc.krb5_creds()
     kcreds.magic = -1760647408  # KV5M_PRINCIPAL
 
     # Extract and massage the principals
     server = json_name_bits_to_princ(ctx, creds['srealm'], creds['sname'])
     client = json_name_bits_to_princ(ctx, creds['crealm'], creds['cname'])
-    verify_same_princ(client)
 
     tkt_server = json_name_bits_to_princ(ctx,
                                          creds['ticket']['realm'],
@@ -122,14 +112,33 @@ def add_credential_to_ccache(creds, princ=None):
     k5.encode_krb5_ticket(ctypes.byref(ktkt), ctypes.byref(p_tkt_data))
     kcreds.ticket = p_tkt_data.contents
 
+    return k5.Credentials(ctx).copy_from_cstruct(kcreds)
+
+def add_credential_to_ccache(creds, princ=None):
+    # pylint: disable=protected-access, too-many-locals, too-many-statements
+    # all this should be abstracted away somewhere else.
+    # This may be leaky. Consider kdestroy/re-init/re-ping zephyr servers.
+    def verify_same_princ(client_name):
+        if princ:
+            given_client_name = princ.encode('utf-8')
+            if client_name != given_client_name:
+                raise ValueError(f'Ticket for wrong client: {client_name} vs {given_client_name}')
+
+    ctx = k5.Context()
+    kcreds = parse_credential_dict(ctx, creds)
+
+    verify_same_princ(kcreds.client)
+
     # compare against our current credential
+    ccache = ctx.cc_default()
     try:
         current_credential = _get_zephyr_creds(creds['ticket']['realm'])
-        if current_credential.endtime >= kcreds.times.endtime:
+        if current_credential.endtime >= kcreds.endtime:
             # New cred doesn't buy us any time; skip it.
             return
         k5.krb5_cc_remove_cred(ctx._handle, ccache._handle,
-                               0, current_credential._handle)
+                               0x08,  # KRB5_TC_MATCH_TIMES_EXACT
+                               current_credential._handle)
     except k5.Error:
         # If this fails, we either don't have old credentials or the
         # MEMORY cache is too old to implement credential removal. In
@@ -137,8 +146,8 @@ def add_credential_to_ccache(creds, princ=None):
         # credentials first, which probably works even if it is leaky.
         pass
 
-    # and finally, store the new cred in the ccache.
-    k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds)
+    # store the new cred in the ccache.
+    k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds._handle)
 
 
 def _get_zephyr_creds(realm):
