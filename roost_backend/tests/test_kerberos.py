@@ -1,12 +1,11 @@
 import base64
 import datetime
-
-from django.test import TestCase
+import unittest
 
 from roost_backend.utils import kerberos
 
 
-class KerberosTests(TestCase):
+class KerberosTests(unittest.TestCase):
     realm = 'EXAMPLE.COM'
     client_princ = 'user@EXAMPLE.COM'
     server_princ = 'zephyr/zephyr@EXAMPLE.COM'
