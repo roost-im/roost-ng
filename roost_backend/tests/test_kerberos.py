@@ -2,8 +2,10 @@ import base64
 import datetime
 import unittest
 
+import contrib.roost_python.krb5 as k5
 from roost_backend.utils import kerberos
 
+# pylint: disable=protected-access
 
 class KerberosTests(unittest.TestCase):
     realm = 'EXAMPLE.COM'
@@ -46,6 +48,12 @@ class KerberosTests(unittest.TestCase):
         cred['sname'] = cred['ticket']['sname']
         return cred
 
+    def test_kerberos_credential_pricipal_verification(self):
+        kerberos.initialize_memory_ccache(self.client_princ)
+        now = int(datetime.datetime.utcnow().timestamp())
+        fake_cred = self.make_fake_cred(start=now-300, end=now+300)
+        kerberos.add_credential_to_ccache(fake_cred, self.client_princ)
+
     def test_kerberos_credential_selection_old_first(self):
         kerberos.initialize_memory_ccache(self.client_princ)
         now = int(datetime.datetime.utcnow().timestamp())
@@ -75,3 +83,17 @@ class KerberosTests(unittest.TestCase):
         creds = kerberos._get_zephyr_creds(self.realm)
         self.assertEqual(creds.endtime,
                          fake_cred2['endtime'] // 1000)
+
+    def test_kerberos_credential_properties(self):
+        kerberos.initialize_memory_ccache(self.client_princ)
+        now = int(datetime.datetime.utcnow().timestamp())
+        ctx = k5.Context()
+        start = now - 100
+        end = now + 800
+        cred = kerberos.parse_credential_dict(
+            ctx, self.make_fake_cred(start=start, end=end))
+
+        self.assertEqual(cred.client, self.client_princ.encode('utf8'))
+        self.assertEqual(cred.server, self.server_princ.encode('utf8'))
+        self.assertEqual(cred.starttime, start)
+        self.assertEqual(cred.endtime, end)
