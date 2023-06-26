@@ -84,6 +84,24 @@ class KerberosTests(unittest.TestCase):
         self.assertEqual(creds.endtime,
                          fake_cred2['endtime'] // 1000)
 
+    def test_kerberos_credential_expired_cleanup(self):
+        kerberos.initialize_memory_ccache(self.client_princ)
+        now = int(datetime.datetime.utcnow().timestamp())
+        ctx = k5.Context()
+        ccache = ctx.cc_default()
+
+        expired_cred = kerberos.parse_credential_dict(
+            ctx, self.make_fake_cred(start=now-600, end=now-300))
+        new_cred = self.make_fake_cred(start=now-100, end=now+800)
+
+        self.assertEqual(len(ccache), 0)
+        # Add manually since it's expired.
+        k5.krb5_cc_store_cred(ctx._handle, ccache._handle, expired_cred._handle)
+        self.assertEqual(len(ccache), 1)
+
+        kerberos.add_credential_to_ccache(new_cred)
+        self.assertEqual(len(ccache), 1)
+
     def test_kerberos_credential_properties(self):
         kerberos.initialize_memory_ccache(self.client_princ)
         now = int(datetime.datetime.utcnow().timestamp())

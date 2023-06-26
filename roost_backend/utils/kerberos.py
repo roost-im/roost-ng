@@ -149,6 +149,12 @@ def add_credential_to_ccache(creds, princ=None):
     # store the new cred in the ccache.
     k5.krb5_cc_store_cred(ctx._handle, ccache._handle, kcreds._handle)
 
+    # remove expired credentials.
+    expired_credentials = [x for x in ccache if not x.is_valid()]
+    for expired in expired_credentials:
+        k5.krb5_cc_remove_cred(ctx._handle, ccache._handle,
+                               0x08,  # KRB5_TC_MATCH_TIMES_EXACT
+                               expired._handle)
 
 def _get_zephyr_creds(realm):
     context = k5.Context()
