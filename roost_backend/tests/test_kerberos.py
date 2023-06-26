@@ -1,6 +1,5 @@
 import base64
 import datetime
-from pprint import pprint
 
 from django.test import TestCase
 
