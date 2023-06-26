@@ -394,6 +394,22 @@ class Credentials:
     def endtime(self):
         return self._handle.contents.times.endtime
 
+    @property
+    def client(self):
+        name_c = ctypes.c_char_p()
+        krb5_unparse_name(self._ctx._handle, self._handle.contents.client, name_c)
+        name = name_c.value
+        krb5_free_unparsed_name(self._ctx._handle, name_c)
+        return name
+
+    @property
+    def server(self):
+        name_c = ctypes.c_char_p()
+        krb5_unparse_name(self._ctx._handle, self._handle.contents.server, name_c)
+        name = name_c.value
+        krb5_free_unparsed_name(self._ctx._handle, name_c)
+        return name
+
     def is_valid(self):
         """Chceks to see if the credential is in its valid lifetime."""
         now = datetime.datetime.utcnow().timestamp()
