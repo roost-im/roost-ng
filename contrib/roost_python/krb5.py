@@ -286,7 +286,7 @@ class Keytab:
         if bool(self._handle):
             krb5_kt_close(self._ctx._handle, self._handle)
 
-    def get_entries(self, max=0):
+    def get_entries(self, cnt=0):
         cur = krb5_ctypes.krb5_kt_cursor()
         ret = []
         krb5_kt_start_seq_get(self._ctx._handle, self._handle, cur)
@@ -297,13 +297,13 @@ class Keytab:
             except Error:
                 break
             ret.append(entry)
-            if max and len(ret) == max:
+            if cnt and len(ret) == cnt:
                 break
         krb5_kt_end_seq_get(self._ctx._handle, self._handle, cur)
         return ret
 
     def get_first_entry(self):
-        return self.get_entries(max=1)[0]
+        return self.get_entries(cnt=1)[0]
 
     def get_first_principal(self):
         return self.get_first_entry().principal()
