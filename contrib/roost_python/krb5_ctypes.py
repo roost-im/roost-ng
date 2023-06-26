@@ -287,6 +287,7 @@ krb5_get_init_creds_opt = ctypes.c_void_p
 krb5_get_init_creds_opt_ptr = ctypes.POINTER(krb5_get_init_creds_opt)
 
 krb5_keytab = ctypes.c_void_p
+krb5_cc_cursor = ctypes.c_void_p
 krb5_kt_cursor = ctypes.c_void_p
 
 # Functions
@@ -308,6 +309,31 @@ krb5_cc_remove_cred.argtypes = (krb5_context,
                                 krb5_ccache,
                                 krb5_flags,
                                 krb5_creds_ptr)
+
+krb5_cc_start_seq_get = libkrb5.krb5_cc_start_seq_get
+krb5_cc_start_seq_get.restype = krb5_error_code
+krb5_cc_start_seq_get.argtypes = (krb5_context,
+                                  krb5_ccache,
+                                  ctypes.POINTER(krb5_cc_cursor))
+
+krb5_cc_next_cred = libkrb5.krb5_cc_next_cred
+krb5_cc_next_cred.restype = krb5_error_code
+krb5_cc_next_cred.argtypes = (krb5_context,
+                              krb5_ccache,
+                              ctypes.POINTER(krb5_cc_cursor),
+                              krb5_creds_ptr)
+
+krb5_cc_end_seq_get = libkrb5.krb5_cc_end_seq_get
+krb5_cc_end_seq_get.restype = krb5_error_code
+krb5_cc_end_seq_get.argtypes = (krb5_context,
+                                krb5_ccache,
+                                ctypes.POINTER(krb5_cc_cursor))
+
+krb5_copy_creds = libkrb5.krb5_copy_creds
+krb5_copy_creds.restype = krb5_error_code
+krb5_copy_creds.argtypes = (krb5_context,
+                            krb5_creds_ptr,
+                            ctypes.POINTER(krb5_creds_ptr))
 
 krb5_init_keyblock = libkrb5.krb5_init_keyblock
 krb5_init_keyblock.restype = krb5_error_code

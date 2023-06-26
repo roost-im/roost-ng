@@ -65,6 +65,10 @@ krb5_cc_destroy = check_error(krb5_ctypes.krb5_cc_destroy)
 krb5_cc_get_principal = check_error(krb5_ctypes.krb5_cc_get_principal)
 krb5_cc_store_cred = check_error(krb5_ctypes.krb5_cc_store_cred)
 krb5_cc_remove_cred = check_error(krb5_ctypes.krb5_cc_remove_cred)
+krb5_cc_start_seq_get = check_error(krb5_ctypes.krb5_cc_start_seq_get)
+krb5_cc_next_cred = check_error(krb5_ctypes.krb5_cc_next_cred)
+krb5_cc_end_seq_get = check_error(krb5_ctypes.krb5_cc_end_seq_get)
+krb5_copy_creds = check_error(krb5_ctypes.krb5_copy_creds)
 krb5_free_keytab_entry_contents = check_error(krb5_ctypes.krb5_free_keytab_entry_contents)
 krb5_free_principal = check_error(krb5_ctypes.krb5_free_principal)
 krb5_get_init_creds_keytab = check_error(krb5_ctypes.krb5_get_init_creds_keytab)
@@ -158,6 +162,44 @@ class Context:
 
 
 class CCache:
+    class Iterator:
+        # Underlying iterator behavior is undefined if the ccache is
+        # modified while iterating. Consider also importing
+        # krb5_cc_lock and krb5_cc_unlock.
+        def __init__(self, ccache):
+            self.ccache = ccache
+            self.cursor = krb5_ctypes.krb5_cc_cursor()
+            krb5_cc_start_seq_get(self.ctx._handle,
+                                  self.ccache._handle,
+                                  self.cursor)
+
+        def __del__(self):
+            if self.cursor:
+                krb5_cc_end_seq_get(self.ctx._handle,
+                                    self.ccache._handle,
+                                    self.cursor)
+
+        def __next__(self):
+            cred = krb5_ctypes.krb5_creds()
+            try:
+                krb5_cc_next_cred(self.ctx._handle,
+                                  self.ccache._handle,
+                                  self.cursor,
+                                  cred)
+            except Error as e:
+                krb5_cc_end_seq_get(self.ctx._handle,
+                                    self.ccache._handle,
+                                    self.cursor)
+                self.cursor = None
+                raise StopIteration from e
+            ret = Credentials(self.ctx)
+            krb5_copy_creds(self.ctx._handle, cred, ret._handle)
+            return ret
+
+        @property
+        def ctx(self):
+            return self.ccache._ctx
+
     def __init__(self, ctx):
         self._ctx = ctx
         self._handle = krb5_ctypes.krb5_ccache()
@@ -165,6 +207,15 @@ class CCache:
     def __del__(self):
         if bool(self._handle):
             krb5_cc_close(self._ctx._handle, self._handle)
+
+    def __iter__(self):
+        return self.Iterator(self)
+
+    def __len__(self):
+        ret = 0
+        for _ in self:
+            ret += 1
+        return ret
 
     def init_name(self, princ):
         if isinstance(princ, (str, bytes)):
@@ -323,6 +374,10 @@ class Credentials:
     def __del__(self):
         if bool(self._handle):
             krb5_free_creds(self._ctx._handle, self._handle)
+
+    def copy_from_cstruct(self, cred):
+        krb5_copy_creds(self._ctx._handle, cred, self._handle)
+        return self
 
     def decode_ticket(self):
         return self._ctx._decode_ticket(self._handle.contents.ticket)
