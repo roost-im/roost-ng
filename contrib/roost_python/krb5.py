@@ -19,6 +19,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+# pylint: disable=consider-using-f-string, invalid-name, protected-access
+
 import base64
 import ctypes
 import datetime
@@ -276,7 +278,7 @@ class KeytabEntry:
         return Principal(self._ctx, princ_str=self.unparse_name())
 
     def __str__(self):
-        return self.unparse_name().decode()
+        return self.unparse_name().decode()  # pylint: disable=no-member
 
     def __repr__(self):
         return '<%s: %s (kvno: %i)>' % (self.__class__.__name__, self.unparse_name(), self._handle.vno)
@@ -307,7 +309,7 @@ class Principal:
         return name
 
     def __str__(self):
-        return self.unparse_name().decode()
+        return self.unparse_name().decode()  # pylint: disable=no-member
 
     def __repr__(self):
         return '<%s: %s>' % (self.__class__.__name__, self.unparse_name())
