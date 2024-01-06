@@ -2,7 +2,7 @@ channels[daphne]>=4.0.0,<5
 channels-redis>=4.0.0,<5
 cryptography
 Cython
-Django>=3.2,<4.0
+Django>=4.2,<5.0
 django-cors-headers
 djangorestframework
 djangorestframework-camel-case
