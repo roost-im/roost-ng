@@ -7,6 +7,7 @@ from roost_backend.utils import kerberos
 
 # pylint: disable=protected-access
 
+
 class KerberosTests(unittest.TestCase):
     realm = 'EXAMPLE.COM'
     client_princ = 'user@EXAMPLE.COM'

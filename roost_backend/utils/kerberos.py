@@ -114,6 +114,7 @@ def parse_credential_dict(ctx, creds):
 
     return k5.Credentials(ctx).copy_from_cstruct(kcreds)
 
+
 def add_credential_to_ccache(creds, princ=None):
     # pylint: disable=protected-access, too-many-locals, too-many-statements
     # all this should be abstracted away somewhere else.
@@ -155,6 +156,7 @@ def add_credential_to_ccache(creds, princ=None):
         k5.krb5_cc_remove_cred(ctx._handle, ccache._handle,
                                0x08,  # KRB5_TC_MATCH_TIMES_EXACT
                                expired._handle)
+
 
 def _get_zephyr_creds(realm):
     context = k5.Context()
