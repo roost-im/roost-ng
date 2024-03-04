@@ -9,7 +9,10 @@ class DaphneRootPathForWebsockets(BaseMiddleware):
         # Daphne does not deal with the daphne-root-path header for websockets,
         # so we will deal with it here.
         headers = dict(scope['headers'])
-        root_path = headers.get(b'daphne-root-path', b'').decode()
+        if 'root_path' in scope:
+            root_path = scope['root_path']
+        elif 'daphne-root-path' in headers:
+            root_path = headers.get(b'daphne-root-path', b'').decode()
         path = scope['path']
         if root_path and path.startswith(root_path):
             scope['path'] = path[len(root_path):]
