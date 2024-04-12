@@ -21,7 +21,7 @@ flake8==7.0.0;python_version>="3.8.1"
 flake8==5.0.4;python_version<"3.8.1"
 gssapi==1.8.3
 hyperlink==21.0.0
-idna==3.6
+idna==3.7
 incremental==22.10.0
 isort==5.13.2
 mccabe==0.7.0
