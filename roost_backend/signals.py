@@ -12,18 +12,19 @@ def message_post_processing(sender, instance, created, **_kwargs):
     # pylint: disable=unused-argument
     if not created:
         return
+    user_qs = models.User.objects.distinct().only('id', 'principal')
     users = []
     if instance.is_personal:
         if instance.is_outgoing:
-            users.append(models.User.objects.get(principal=instance.sender))
+            users.append(user_qs.get(principal=instance.sender))
         else:
-            users.append(models.User.objects.get(principal=instance.recipient))
+            users.append(user_qs.get(principal=instance.recipient))
     elif not instance.is_outgoing:
-        users.extend(sub.user for sub in
-                     models.Subscription.objects.filter(
-                         class_key=instance.class_key,
-                         instance_key__in=(instance.instance_key, '*'),
-                         zrecipient=instance.recipient))
+        users.extend(user_qs.filter(
+            subscription__in=models.Subscription.objects.filter(
+                class_key=instance.class_key,
+                instance_key__in=(instance.instance_key, '*'),
+                zrecipient=instance.recipient)))
 
     if users:
         instance.users.add(*users)
