@@ -15,7 +15,7 @@ decorator==5.1.1
 dill==0.3.8
 Django==4.2.11
 django-cors-headers==4.3.1
-djangorestframework==3.14.0
+djangorestframework==3.15.2
 djangorestframework-camel-case==1.4.2
 flake8==7.0.0;python_version>="3.8.1"
 flake8==5.0.4;python_version<"3.8.1"
