@@ -41,6 +41,7 @@ class JWTAuthentication(authentication.TokenAuthentication):
         if claims is None:
             return None, None
 
+        user = None
         if 'identity' in claims:
             user = models.User.objects.filter(**claims['identity']).first()
         return claims, user
