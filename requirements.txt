@@ -39,7 +39,7 @@ PyZephyr @ git+https://github.com/asedeno/python-zephyr@850f0ae696691bfbaed633fa
 redis==7.0.1
 service-identity==24.2.0
 setproctitle==1.3.7
-sqlparse==0.5.3
+sqlparse==0.5.4
 Twisted==25.5.0
 txaio==25.9.2
 typing_extensions==4.15.0
