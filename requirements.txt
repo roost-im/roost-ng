@@ -33,7 +33,7 @@ PyJWT==2.10.1
 pylint==2.3.0
 pylint-django==2.5.5
 pylint-plugin-utils==0.9.0
-pyOpenSSL==25.3.0
+pyOpenSSL==26.0.0
 PyYAML==6.0.3
 PyZephyr @ git+https://github.com/asedeno/python-zephyr@850f0ae696691bfbaed633fa7a53532624e78d40
 redis==7.0.1
