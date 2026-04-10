@@ -1,7 +1,6 @@
 channels[daphne]>=4.0.0,<5
 channels-redis>=4.0.0,<5
 cryptography
-Cython
 Django>=4.2,<5.0
 django-cors-headers
 djangorestframework
@@ -14,6 +13,6 @@ pylint
 pylint-django
 pylint-plugin-utils
 PyYAML
-PyZephyr @ git+https://github.com/asedeno/python-zephyr@850f0ae696691bfbaed633fa7a53532624e78d40
+PyZephyr @ git+https://github.com/asedeno/python-zephyr@c0de86e8a67f975a2d770c0ccfb51b96a41a1224
 setproctitle
 Twisted
