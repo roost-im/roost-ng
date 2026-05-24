@@ -253,9 +253,9 @@ class Message(models.Model):
         return msg
 
     class Meta:
-        index_together = [
-            ['class_key', 'instance_key'],
-            ['class_key_base', 'instance_key_base'],
+        indexes = [
+            models.Index(fields=['class_key', 'instance_key']),
+            models.Index(fields=['class_key_base', 'instance_key_base']),
         ]
         ordering = ['id']
 
