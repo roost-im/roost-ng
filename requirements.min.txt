@@ -1,7 +1,7 @@
-channels[daphne]>=4.0.0,<5
-channels-redis>=4.0.0,<5
+channels[daphne]>=4.3.0,<5
+channels-redis>=4.3.0,<5
 cryptography
-Django>=4.2,<5.0
+Django>=5.2,<6.0
 django-cors-headers
 djangorestframework
 djangorestframework-camel-case
