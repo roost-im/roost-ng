@@ -18,6 +18,7 @@ import django.apps
 from django.core.exceptions import AppRegistryNotReady
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from django.conf import settings
 from djangorestframework_camel_case.util import underscoreize
 import setproctitle
 import zephyr
@@ -234,6 +235,10 @@ class _ZephyrProcessMixin(_ChannelLayerMixin):
                     continue
                 if notice.opcode.lower() == b'ping':
                     # Ignoring pings
+                    continue
+                if settings.ROOST_CHECK_PUNT(notice):
+                    _LOGGER.getChild('punt').info("[%s] zephyr handler punting znotice %s, %s",
+                                                  self.log_prefix, notice, notice.__dict__)
                     continue
                 # This appears to be an incoming message.
                 msg = django.apps.apps.get_model('roost_backend', 'Message').from_notice(notice)
