@@ -23,7 +23,7 @@ idna==3.16
 Incremental==24.11.0
 isort==8.0.1
 mccabe==0.7.0
-msgpack==1.1.2
+msgpack==1.2.1
 packaging==26.2
 platformdirs==4.9.6
 py-ubjson==0.16.1
