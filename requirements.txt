@@ -12,7 +12,7 @@ cryptography==48.0.0
 daphne==4.2.1
 decorator==5.3.1
 dill==0.4.1
-Django==5.2.14
+Django==5.2.15
 django-cors-headers==4.9.0
 djangorestframework==3.17.1
 djangorestframework-camel-case==1.4.2
