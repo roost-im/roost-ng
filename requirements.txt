@@ -27,7 +27,7 @@ msgpack==1.1.2
 packaging==26.2
 platformdirs==4.9.6
 py-ubjson==0.16.1
-pyasn1==0.6.3
+pyasn1==0.6.4
 pyasn1_modules==0.4.2
 pycodestyle==2.14.0
 pycparser==3.0
