@@ -179,6 +179,9 @@ class CCache:
                                     self.ccache._handle,
                                     self.cursor)
 
+        def __iter__(self):
+            return self
+
         def __next__(self):
             cred = krb5_ctypes.krb5_creds()
             try:

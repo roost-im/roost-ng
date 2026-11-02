@@ -63,10 +63,11 @@ async def _send_to_group(group_name, msg, wait_for_response=False):
         channel_name = await channel_layer.new_channel()
         msg = dict(msg, _reply_to=channel_name)
 
-        ret = await asyncio.gather(
-            channel_layer.receive(channel_name),
-            channel_layer.group_send(group_name, msg))
-        return ret[0]
+        async with asyncio.TaskGroup() as tg:
+            receive_task = tg.create_task(channel_layer.receive(channel_name))
+            tg.create_task(channel_layer.group_send(group_name, msg))
+
+        return receive_task.result()
 
     await channel_layer.group_send(group_name, msg)
     return None
